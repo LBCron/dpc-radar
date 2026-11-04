@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 340" width="960" height="340" role="img" aria-label="Hourly radar rain at Melito di Porto Salvo on 2026-10-10">
+<style>
+text{font-family:Helvetica Neue, Helvetica, Arial, sans-serif;fill:#0b0b0b}
+.bg{fill:#fcfcfb} .t2{fill:#52514e} .mu{fill:#7a7974}
+.grid{stroke:#e6e5e0;stroke-width:1} .axis{stroke:#7a7974;stroke-width:1}
+.radar{fill:#2a78d6} .merge{fill:#eb6834} .hl{fill:#0d366b} .bar{fill:#6da7ec}
+@media (prefers-color-scheme: dark){
+text{fill:#f0efec} .bg{fill:#1a1a19} .t2{fill:#c3c2b7} .mu{fill:#9a9993}
+.grid{stroke:#2e2e2c} .axis{stroke:#7a7974}
+.radar{fill:#3987e5} .merge{fill:#d95926} .hl{fill:#cde2fb} .bar{fill:#3987e5}
+}
+</style>
+<rect class="bg" width="960" height="340" rx="8"/>
+<text x="56" y="30" font-size="18" font-weight="700">Melito di Porto Salvo, 10 October 2026: the storm, hour by hour</text>
+<text class="t2" x="56" y="52" font-size="13">Radar only (SRT1), 3×3 median around the town, mm per hour. Day total: radar 115 mm, «Merging» 185 mm.</text>
+<line class="grid" x1="56" x2="940" y1="296.0" y2="296.0"/>
+<text class="mu" x="48" y="300.0" font-size="11" text-anchor="end">0</text>
+<line class="grid" x1="56" x2="940" y1="251.2" y2="251.2"/>
+<text class="mu" x="48" y="255.2" font-size="11" text-anchor="end">5</text>
+<line class="grid" x1="56" x2="940" y1="206.4" y2="206.4"/>
+<text class="mu" x="48" y="210.4" font-size="11" text-anchor="end">10</text>
+<line class="grid" x1="56" x2="940" y1="161.6" y2="161.6"/>
+<text class="mu" x="48" y="165.6" font-size="11" text-anchor="end">15</text>
+<line class="grid" x1="56" x2="940" y1="116.8" y2="116.8"/>
+<text class="mu" x="48" y="120.8" font-size="11" text-anchor="end">20</text>
+<line class="grid" x1="56" x2="940" y1="72.0" y2="72.0"/>
+<text class="mu" x="48" y="76.0" font-size="11" text-anchor="end">25</text>
+<rect class="radar" x="58.0" y="153.0" width="32.8" height="143.0" rx="2"><title>00:00–01:00 UTC: 16.0 mm</title></rect>
+<text class="mu" x="58.0" y="314" font-size="11">00:00</text>
+<rect class="radar" x="94.8" y="105.7" width="32.8" height="190.3" rx="2"><title>01:00–02:00 UTC: 21.2 mm</title></rect>
+<rect class="radar" x="131.7" y="221.8" width="32.8" height="74.2" rx="2"><title>02:00–03:00 UTC: 8.3 mm</title></rect>
+<rect class="radar" x="168.5" y="114.2" width="32.8" height="181.8" rx="2"><title>03:00–04:00 UTC: 20.3 mm</title></rect>
+<text class="mu" x="168.5" y="314" font-size="11">03:00</text>
+<rect class="radar" x="205.3" y="137.1" width="32.8" height="158.9" rx="2"><title>04:00–05:00 UTC: 17.7 mm</title></rect>
+<rect class="radar" x="242.2" y="247.7" width="32.8" height="48.3" rx="2"><title>05:00–06:00 UTC: 5.4 mm</title></rect>
+<rect class="radar" x="279.0" y="293.6" width="32.8" height="2.4" rx="2"><title>06:00–07:00 UTC: 0.3 mm</title></rect>
+<text class="mu" x="279.0" y="314" font-size="11">06:00</text>
+<rect class="radar" x="352.7" y="293.1" width="32.8" height="2.9" rx="2"><title>08:00–09:00 UTC: 0.3 mm</title></rect>
+<rect class="radar" x="389.5" y="240.2" width="32.8" height="55.8" rx="2"><title>09:00–10:00 UTC: 6.2 mm</title></rect>
+<text class="mu" x="389.5" y="314" font-size="11">09:00</text>
+<rect class="radar" x="426.3" y="295.6" width="32.8" height="0.4" rx="2"><title>10:00–11:00 UTC: 0.0 mm</title></rect>
+<rect class="radar" x="500.0" y="291.0" width="32.8" height="5.0" rx="2"><title>12:00–13:00 UTC: 0.6 mm</title></rect>
+<text class="mu" x="500.0" y="314" font-size="11">12:00</text>
+<rect class="radar" x="536.8" y="278.8" width="32.8" height="17.2" rx="2"><title>13:00–14:00 UTC: 1.9 mm</title></rect>
+<rect class="radar" x="573.7" y="269.1" width="32.8" height="26.9" rx="2"><title>14:00–15:00 UTC: 3.0 mm</title></rect>
+<rect class="radar" x="610.5" y="221.1" width="32.8" height="74.9" rx="2"><title>15:00–16:00 UTC: 8.4 mm</title></rect>
+<text class="mu" x="610.5" y="314" font-size="11">15:00</text>
+<rect class="radar" x="647.3" y="285.7" width="32.8" height="10.3" rx="2"><title>16:00–17:00 UTC: 1.1 mm</title></rect>
+<text class="mu" x="721.0" y="314" font-size="11">18:00</text>
+<rect class="radar" x="831.5" y="261.3" width="32.8" height="34.7" rx="2"><title>21:00–22:00 UTC: 3.9 mm</title></rect>
+<text class="mu" x="831.5" y="314" font-size="11">21:00</text>
+<text x="111.3" y="99.7" font-size="12" font-weight="700" text-anchor="middle">21 mm</text>
+<line class="axis" x1="56" x2="940" y1="296" y2="296"/>
+<text class="mu" x="940" y="332" font-size="11" text-anchor="end">hour of the day (UTC) · mm per hour</text>
+</svg>
