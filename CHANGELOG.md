@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-04
+
 ### Added
 
 - `products`: the DPC radar products (SRI, SRT1, CUM3/6/12/24), the requests of

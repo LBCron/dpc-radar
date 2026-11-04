@@ -30,8 +30,7 @@ print(rain.sample([(15.78, 37.92)]))  # mm at Melito di Porto Salvo (184.9 on 10
 > [Limen](https://github.com/agent-engineering-studio/limen). Today it holds
 > the products, the rain grid and the client. The archive, the 2010–2025
 > history and the criticality bulletins follow, one pull request at a time:
-> see the [roadmap](https://agentengineering.it/dpc-radar/roadmap/). Nothing is
-> on PyPI yet.
+> see the [roadmap](https://agentengineering.it/dpc-radar/roadmap/).
 
 ---
 
@@ -169,8 +168,7 @@ radar starts a run at once) and the «Merging» totals feed the flood score.
 ### 1. Install
 
 ```bash
-pip install dpc-radar   # not on PyPI yet: for now, install from git
-pip install "dpc-radar @ git+https://github.com/agent-engineering-studio/dpc-radar"
+pip install dpc-radar
 ```
 
 Python 3.12 or newer. It depends on `httpx`, `numpy` and `rasterio`.
