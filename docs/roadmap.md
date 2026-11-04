@@ -114,6 +114,12 @@ calibration also needs. **Check:** new verified events per month of archive.
 
 ### Learned frame check · [#6](https://github.com/agent-engineering-studio/dpc-radar/issues/6) · effort M
 
+**First step done: `jump-sign`** in the [benchmark](benchmark.md). Where two
+frames 30 minutes apart differ by more than half an hour of rain, the one that
+jumps up is rejected whole. It passes 17 of 18 confirmed checks (Limen today:
+8) and, on 96 pairs of whole frames, rejects the 44 corrupted :30 frames and
+no :00 frame. What is left for the learned check: artefacts that do not move.
+
 A score per frame and a mask per pixel, from explainable features: the jump
 from the frame before (today's rule, kept), symmetry around each radar site,
 rain over the sea against the land nearby, agreement between SRI, SRT1 and

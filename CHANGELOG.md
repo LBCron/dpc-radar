@@ -16,6 +16,11 @@ All notable changes to this project are documented here. The format follows
   10 October 2026, the corrupted :30 CUM24 series, calm days, two suspect
   artefacts), a runner that scores cleaning methods on them, and Limen's
   current rule as a baseline (#2). Checked in CI.
+- `benchmarks`: `jump-sign`, a frame-level check (#6): the frame that jumps up
+  more than 150 mm in 30 minutes is rejected whole, the one after it kept.
+  17/18 confirmed checks (Limen today 8/18); on 96 whole-frame pairs it
+  rejects the 44 corrupted :30 frames and no :00 frame.
+  `benchmarks.season` runs a method on every pair of whole frames.
 
 ### Documentation
 
