@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 404" width="960" height="404" role="img" aria-label="The time window of each DPC radar product">
+<style>
+text{font-family:Helvetica Neue, Helvetica, Arial, sans-serif;fill:#0b0b0b}
+.bg{fill:#fcfcfb} .t2{fill:#52514e} .mu{fill:#7a7974}
+.grid{stroke:#e6e5e0;stroke-width:1} .axis{stroke:#7a7974;stroke-width:1}
+.radar{fill:#2a78d6} .merge{fill:#eb6834} .hl{fill:#0d366b} .bar{fill:#6da7ec}
+@media (prefers-color-scheme: dark){
+text{fill:#f0efec} .bg{fill:#1a1a19} .t2{fill:#c3c2b7} .mu{fill:#9a9993}
+.grid{stroke:#2e2e2c} .axis{stroke:#7a7974}
+.radar{fill:#3987e5} .merge{fill:#d95926} .hl{fill:#cde2fb} .bar{fill:#3987e5}
+}
+</style>
+<rect class="bg" width="960" height="404" rx="8"/>
+<text x="24" y="30" font-size="18" font-weight="700">Six products, one question: how much rain, over which window?</text>
+<text class="t2" x="24" y="52" font-size="13">Each frame adds up the rain of a window that ends at the frame time.</text>
+<rect class="radar" x="24" y="62" width="12" height="12" rx="2"/><text class="t2" x="42" y="73" font-size="13">radar only</text><rect class="merge" x="130" y="62" width="12" height="12" rx="2"/><text class="t2" x="148" y="73" font-size="13">«Merging»: radar + rain gauges</text>
+<line class="grid" x1="110.0" x2="110.0" y1="90" y2="336"/>
+<text class="mu" x="110.0" y="354" font-size="11" text-anchor="middle">−24 h</text>
+<line class="grid" x1="247.5" x2="247.5" y1="90" y2="336"/>
+<text class="mu" x="247.5" y="354" font-size="11" text-anchor="middle">−18 h</text>
+<line class="grid" x1="385.0" x2="385.0" y1="90" y2="336"/>
+<text class="mu" x="385.0" y="354" font-size="11" text-anchor="middle">−12 h</text>
+<line class="grid" x1="522.5" x2="522.5" y1="90" y2="336"/>
+<text class="mu" x="522.5" y="354" font-size="11" text-anchor="middle">−6 h</text>
+<line class="grid" x1="591.2" x2="591.2" y1="90" y2="336"/>
+<text class="mu" x="591.2" y="354" font-size="11" text-anchor="middle">−3 h</text>
+<line class="grid" x1="660.0" x2="660.0" y1="90" y2="336"/>
+<text class="mu" x="660.0" y="354" font-size="11" text-anchor="middle">frame time</text>
+<text x="96" y="118" font-size="14" font-weight="700" text-anchor="end" font-family="ui-monospace,Menlo,monospace">SRI</text>
+<circle class="radar" cx="660.0" cy="113" r="6"/>
+<text class="t2" x="676.0" y="118" font-size="12">intensity right now · mm/h · 1 km · every 5 min</text>
+<text x="96" y="158" font-size="14" font-weight="700" text-anchor="end" font-family="ui-monospace,Menlo,monospace">SRT1</text>
+<rect class="radar" x="637.1" y="145" width="22.9" height="16" rx="4"/>
+<text class="t2" x="676.0" y="158" font-size="12">last hour · mm · 1 km · every 5 min</text>
+<text x="96" y="198" font-size="14" font-weight="700" text-anchor="end" font-family="ui-monospace,Menlo,monospace">CUM3</text>
+<rect class="merge" x="591.2" y="185" width="68.8" height="16" rx="4"/>
+<text class="t2" x="676.0" y="198" font-size="12">last 3 h · mm · 0.01° · every 30 min</text>
+<text x="96" y="238" font-size="14" font-weight="700" text-anchor="end" font-family="ui-monospace,Menlo,monospace">CUM6</text>
+<rect class="merge" x="522.5" y="225" width="137.5" height="16" rx="4"/>
+<text class="t2" x="676.0" y="238" font-size="12">last 6 h · every 30 min</text>
+<text x="96" y="278" font-size="14" font-weight="700" text-anchor="end" font-family="ui-monospace,Menlo,monospace">CUM12</text>
+<rect class="merge" x="385.0" y="265" width="275.0" height="16" rx="4"/>
+<text class="t2" x="676.0" y="278" font-size="12">last 12 h · every 30 min</text>
+<text x="96" y="318" font-size="14" font-weight="700" text-anchor="end" font-family="ui-monospace,Menlo,monospace">CUM24</text>
+<rect class="merge" x="110.0" y="305" width="550.0" height="16" rx="4"/>
+<text class="t2" x="676.0" y="318" font-size="12">last 24 h · every 30 min</text>
+<text class="mu" x="24" y="390" font-size="12">No CUM1: the API answers it with an empty list. Frames are kept for about five months, then they are gone.</text>
+</svg>

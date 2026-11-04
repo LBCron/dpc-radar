@@ -23,6 +23,7 @@ dependencies = []
 [project.urls]
 Homepage = "https://github.com/agent-engineering-studio/dpc-radar"
 Issues = "https://github.com/agent-engineering-studio/dpc-radar/issues"
+Documentation = "https://agentengineering.it/dpc-radar/"
 Changelog = "https://github.com/agent-engineering-studio/dpc-radar/blob/main/CHANGELOG.md"
 
 [build-system]
@@ -36,6 +37,10 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.8",
 ]
+docs = [
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.26",
+]
 
 [tool.ruff]
 line-length = 100
@@ -46,6 +51,8 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "ARG", "PTH", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ARG", "B018"]
+# The image script draws labels with typographic signs (×, –, −) on purpose.
+"docs/**" = ["RUF001"]
 
 [tool.mypy]
 strict = true
