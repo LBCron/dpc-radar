@@ -37,6 +37,11 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.8",
 ]
+bench = [
+    "httpx>=0.27",
+    "numpy>=2.0",
+    "rasterio>=1.4",
+]
 docs = [
     "mkdocs-material>=9.5",
     "mkdocstrings[python]>=0.26",
@@ -53,6 +58,8 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "ARG", "PTH", "RUF"]
 "tests/**" = ["ARG", "B018"]
 # The image script draws labels with typographic signs (×, –, −) on purpose.
 "docs/**" = ["RUF001"]
+# Baseline methods implement an interface: not every method uses every argument.
+"benchmarks/methods.py" = ["ARG002"]
 
 [tool.mypy]
 strict = true

@@ -28,3 +28,14 @@ jobs:
       - run: uv run mypy
       - run: uv run pytest --cov --cov-report=term-missing
       - run: uv build
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv sync --locked --group bench
+      - run: uv run --no-sync python -m benchmarks.run --check

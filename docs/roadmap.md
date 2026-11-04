@@ -71,20 +71,16 @@ flowchart LR
 Limen's radar code moves here only after 16 November 2026, so this phase works
 on notebooks, data and the benchmark.
 
-### Benchmark of known cases · [#2](https://github.com/agent-engineering-studio/dpc-radar/issues/2)
+### Benchmark of known cases · [#2](https://github.com/agent-engineering-studio/dpc-radar/issues/2) · ✅ first version
 
-| Case | What happened | Expected |
-|---|---|---|
-| Melito di Porto Salvo, 10/10/2026 | 185 mm «Merging» in 24 h; forecast 20 mm | heavy rain, real |
-| Lipari, 10/10/2026 | a cloudburst the radar did not see | radar blind here |
-| Corrupted CUM24, 9–11/10/2026 | pixels moving 900–20,584 mm | frame not usable |
-| Hot pixel, 11/10/2026 | 7,348 mm in one pixel | pixel not usable |
-| Disks west of Sardinia, 20/10/2026 | circular fields centred on one radar | probably not rain |
-| Calm days, 1, 4, 6/10/2026 | nothing | nothing |
-
-The frames are cropped and committed (CC BY-SA, with attribution), with a
-runner that prints one line per case. The DPC keeps about five months: the
-October 2026 frames disappear around March 2027, so they are saved now.
+Ten real cases in [`benchmarks/`](benchmark.md): the Melito storm and the
+Lipari miss of 10 October 2026, the corrupted :30 CUM24 series (found on
+30/09–02/10, 08–11/10 and 21/10–03/11), the clean frame right after a corrupted
+one, two calm days, and two suspect artefacts (a steady 1,000 mm bump, disks
+over the sea). Limen's rule today passes **8 of 18** confirmed checks: it has
+no frame-level decision, lets the edges of the corrupted bell through (88 mm
+where the truth is 9), throws away good pixels after a corrupted frame, and
+cannot see steady artefacts or blind spots. Those are the targets of #3 and #6.
 
 ### Radar reliability map · [#3](https://github.com/agent-engineering-studio/dpc-radar/issues/3) · effort S
 

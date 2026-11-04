@@ -1,0 +1,241 @@
+# Known cases of the DPC radar data, with the answer we expect.
+#
+# Every case is one frame and the frame before it (30 minutes earlier), cropped
+# to `bbox` (west, south, east, north, degrees) and saved under frames/<id>/ by
+# fetch.py. Each check asks one question a method must answer:
+#
+#   kind = "frame"    is the frame usable at all?                 expect = true | false
+#   kind = "value"    the rain at a point after the method's      min / max (mm),
+#                     cleaning, read like Limen (3x3 median)       masked_ok: is "not measured" fine?
+#   kind = "masked"   share of the valid pixels the method throws away    max (0-1)
+#   kind = "reliable" can the radar be trusted at this point?    expect = true | false
+#
+# status = "confirmed": the answer is known (from Limen, the gauges, the DPC series).
+# status = "suspect":   our best reading, not confirmed yet; scored apart.
+#
+# Radar data © Dipartimento della Protezione Civile, CC BY-SA 4.0.
+
+# --- Real rain: a cleaning rule must keep it ------------------------------------
+
+[[case]]
+id = "melito-2026-10-10T06"
+title = "The Reggio Calabria storm, morning of 10 October 2026"
+status = "confirmed"
+product = "CUM24"
+time = 2026-10-10T06:00:00Z
+bbox = [14.5, 37.6, 17.3, 39.5]
+source = "Limen flood.yaml and limen#199: forecast 20 mm, radar 152 mm at Melito; the :00 and :30 frames agree here (180.4 and 180.8 mm)"
+
+[[case.check]]
+kind = "frame"
+expect = true
+
+[[case.check]]
+kind = "value"
+name = "Melito di Porto Salvo"
+lon = 15.78
+lat = 37.92
+min = 100.0
+max = 300.0
+masked_ok = false
+
+[[case.check]]
+kind = "value"
+name = "Bagaladi"
+lon = 15.81
+lat = 38.05
+min = 80.0
+max = 250.0
+masked_ok = false
+
+[[case.check]]
+kind = "reliable"
+name = "Lipari: a cloudburst the radar did not see"
+lon = 14.95
+lat = 38.47
+expect = false
+
+[[case]]
+id = "melito-2026-10-11T00"
+title = "The whole day of 10 October 2026 at Melito"
+status = "confirmed"
+product = "CUM24"
+time = 2026-10-11T00:00:00Z
+bbox = [14.5, 37.6, 17.3, 39.5]
+source = "«Merging» CUM24 of the day, 185-192 mm at Melito; the figure of the README"
+
+[[case.check]]
+kind = "value"
+name = "Melito di Porto Salvo"
+lon = 15.78
+lat = 37.92
+min = 150.0
+max = 300.0
+masked_ok = false
+
+# --- The corrupted :30 series: a cleaning rule must throw it away -----------------
+
+[[case]]
+id = "bell-2026-10-11T0930"
+title = "The corrupted :30 series over Abruzzo, 11 October 2026"
+status = "confirmed"
+product = "CUM24"
+time = 2026-10-11T09:30:00Z
+bbox = [13.0, 41.6, 14.6, 42.9]
+source = "limen#235: a smooth 16 km bell of up to 20,584 mm in the :30 series, the :00 series reads ~28 mm. The 7,348 mm 'isolated pixel' is this bell's peak: its 3x3 neighbours have a median of 6,381 mm"
+
+[[case.check]]
+kind = "frame"
+expect = false
+
+[[case.check]]
+kind = "value"
+name = "the bell's peak (7,348 mm)"
+lon = 13.72
+lat = 42.36
+max = 100.0
+masked_ok = true
+
+[[case.check]]
+kind = "value"
+name = "the bell's edge: 88 mm where the :00 frame reads 9"
+lon = 13.865
+lat = 42.285
+max = 30.0
+masked_ok = true
+
+[[case]]
+id = "after-bell-2026-10-11T10"
+title = "The clean :00 frame right after a corrupted one"
+status = "confirmed"
+product = "CUM24"
+time = 2026-10-11T10:00:00Z
+bbox = [13.0, 41.6, 14.6, 42.9]
+source = "limen#235: the :00 series is clean all day (7.3 mm here at 09:00 and 10:00; limen#235 quotes ~28 mm for the whole cell). Comparing with the corrupted frame before it, a jump rule throws good pixels away"
+
+[[case.check]]
+kind = "frame"
+expect = true
+
+[[case.check]]
+kind = "value"
+name = "Gran Sasso, the point of limen#235 (7.3 mm in the :00 series)"
+lon = 13.70
+lat = 42.39
+min = 2.0
+max = 30.0
+masked_ok = false
+
+[[case]]
+id = "bell-2026-10-09T0630"
+title = "The first corrupted :30 frame of 9 October 2026"
+status = "confirmed"
+product = "CUM24"
+time = 2026-10-09T06:30:00Z
+bbox = [13.0, 41.6, 14.6, 42.9]
+source = "limen#235: 13,226 mm at the peak, 6.7 mm in the :00 frame at the same pixel"
+
+[[case.check]]
+kind = "frame"
+expect = false
+
+[[case.check]]
+kind = "value"
+name = "the bell's peak (13,226 mm)"
+lon = 13.72
+lat = 42.36
+max = 100.0
+masked_ok = true
+
+[[case]]
+id = "bell-2026-10-25T0630"
+title = "The corruption is back: 25 October 2026"
+status = "confirmed"
+product = "CUM24"
+time = 2026-10-25T06:30:00Z
+bbox = [13.2, 41.2, 14.8, 42.6]
+source = "found while building this benchmark: the :30 series is corrupted again from 21-22 October to 3 November 2026 (correlation with the :00 frames 0.04-0.57); 10,861 mm here, 8.9 mm in the :00 frame"
+
+[[case.check]]
+kind = "frame"
+expect = false
+
+[[case.check]]
+kind = "value"
+name = "the bell's peak (10,861 mm)"
+lon = 14.05
+lat = 41.86
+max = 100.0
+masked_ok = true
+
+# --- Calm days: a cleaning rule must leave them alone ----------------------------
+
+[[case]]
+id = "calm-2026-10-04T06"
+title = "A calm day: 4 October 2026"
+status = "confirmed"
+product = "CUM24"
+time = 2026-10-04T06:00:00Z
+bbox = [6.6, 36.6, 18.6, 47.1]
+source = "Limen flood.yaml: calm day used to check that observed rain changes nothing; :00 and :30 agree (correlation 0.99)"
+
+[[case.check]]
+kind = "frame"
+expect = true
+
+[[case.check]]
+kind = "masked"
+max = 0.001
+
+[[case]]
+id = "calm-2026-10-06T06"
+title = "A calm day: 6 October 2026"
+status = "confirmed"
+product = "CUM24"
+time = 2026-10-06T06:00:00Z
+bbox = [6.6, 36.6, 18.6, 47.1]
+source = "Limen flood.yaml: calm day; :00 and :30 agree (correlation 1.00)"
+
+[[case.check]]
+kind = "frame"
+expect = true
+
+[[case.check]]
+kind = "masked"
+max = 0.001
+
+# --- Suspect: probably not rain, not confirmed yet --------------------------------
+
+[[case]]
+id = "steady-bump-2026-10-07T12"
+title = "A steady 1,000 mm bump on the Lazio-Abruzzo border, 7 October 2026"
+status = "suspect"
+product = "CUM24"
+time = 2026-10-07T12:00:00Z
+bbox = [13.2, 41.4, 14.4, 42.2]
+source = "found while building this benchmark: a 3x3 km bump of 940-1,152 mm, the same in the :00 and :30 series and exactly 1,152.0 mm at 06, 12 and 18 UTC. A jump rule cannot see it, a 3x3 median keeps it. To confirm against the rain gauges"
+
+[[case.check]]
+kind = "value"
+name = "the bump (1,152 mm)"
+lon = 13.795
+lat = 41.805
+max = 300.0
+masked_ok = true
+
+[[case]]
+id = "sardinia-disks-2026-10-21T00"
+title = "Disks of 'rain' over the sea west of Sardinia, 20 October 2026"
+status = "suspect"
+product = "CUM24"
+time = 2026-10-21T00:00:00Z
+bbox = [6.0, 38.5, 10.0, 41.6]
+source = "found while building this benchmark: circular fields over the sea, identical from one frame to the next (59.1 and 59.0 mm), so a jump rule cannot see them. Probably sea clutter; to confirm"
+
+[[case.check]]
+kind = "value"
+name = "inside the disks, at sea (59 mm)"
+lon = 7.81
+lat = 40.42
+max = 5.0
+masked_ok = true
