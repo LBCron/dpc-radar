@@ -42,5 +42,27 @@
     "calm-2026-10-06T06 · at most 0.1% of pixels masked": "pass",
     "steady-bump-2026-10-07T12 · the bump (1,152 mm): 0-300 mm or not measured": "fail",
     "sardinia-disks-2026-10-21T00 · inside the disks, at sea (59 mm): 0-5 mm or not measured": "fail"
+  },
+  "jump-sign": {
+    "melito-2026-10-10T06 · frame usable": "pass",
+    "melito-2026-10-10T06 · Melito di Porto Salvo: 100-300 mm": "pass",
+    "melito-2026-10-10T06 · Bagaladi: 80-250 mm": "pass",
+    "melito-2026-10-10T06 · Lipari: a cloudburst the radar did not see: not reliable": "none",
+    "melito-2026-10-11T00 · Melito di Porto Salvo: 150-300 mm": "pass",
+    "bell-2026-10-11T0930 · frame rejected": "pass",
+    "bell-2026-10-11T0930 · the bell's peak (7,348 mm): 0-100 mm or not measured": "pass",
+    "bell-2026-10-11T0930 · the bell's edge: 88 mm where the :00 frame reads 9: 0-30 mm or not measured": "pass",
+    "after-bell-2026-10-11T10 · frame usable": "pass",
+    "after-bell-2026-10-11T10 · Gran Sasso, the point of limen#235 (7.3 mm in the :00 series): 2-30 mm": "pass",
+    "bell-2026-10-09T0630 · frame rejected": "pass",
+    "bell-2026-10-09T0630 · the bell's peak (13,226 mm): 0-100 mm or not measured": "pass",
+    "bell-2026-10-25T0630 · frame rejected": "pass",
+    "bell-2026-10-25T0630 · the bell's peak (10,861 mm): 0-100 mm or not measured": "pass",
+    "calm-2026-10-04T06 · frame usable": "pass",
+    "calm-2026-10-04T06 · at most 0.1% of pixels masked": "pass",
+    "calm-2026-10-06T06 · frame usable": "pass",
+    "calm-2026-10-06T06 · at most 0.1% of pixels masked": "pass",
+    "steady-bump-2026-10-07T12 · the bump (1,152 mm): 0-300 mm or not measured": "fail",
+    "sardinia-disks-2026-10-21T00 · inside the disks, at sea (59 mm): 0-5 mm or not measured": "fail"
   }
 }

@@ -319,7 +319,8 @@ the others are here so you don't have to find them yourself.
 
 Every trap above is a case in the **[benchmark](https://agentengineering.it/dpc-radar/benchmark/)**:
 real frames where we know the answer, and how each cleaning rule scores on
-them. Limen's rule today passes 8 of 18 checks.
+them. Limen's rule today passes 8 of 18 checks; a first frame-level check
+(`jump-sign`) passes 17.
 
 ---
 

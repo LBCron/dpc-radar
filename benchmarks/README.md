@@ -27,31 +27,37 @@ committed, a case keeps working.
 ## Today's scores
 
 `limen-max-step` is what Limen does today: it throws away a pixel that moved
-more than 150 mm in 30 minutes. `accept-all` trusts everything.
+more than 150 mm in 30 minutes. `accept-all` trusts everything. `jump-sign` is
+the first step of the learned frame check
+([#6](https://github.com/agent-engineering-studio/dpc-radar/issues/6)): two
+frames 30 minutes apart can differ by at most half an hour of rain, so where
+they differ by more one of them is wrong, and the **sign** says which. The
+corruption always adds rain: the frame that jumps *up* is rejected whole, the
+one that jumps *down* (the clean frame after a corrupted one) is kept intact.
 
-| Case | Check | `accept-all` | `limen-max-step` |
-|---|---|---|---|
-| `melito-2026-10-10T06` | frame usable | ✅ usable | — no frame decision |
-| `melito-2026-10-10T06` | Melito di Porto Salvo: 100-300 mm | ✅ 174.7 mm | ✅ 174.7 mm |
-| `melito-2026-10-10T06` | Bagaladi: 80-250 mm | ✅ 113.1 mm | ✅ 113.1 mm |
-| `melito-2026-10-10T06` | Lipari: a cloudburst the radar did not see: not reliable | — no reliability | — no reliability |
-| `melito-2026-10-11T00` | Melito di Porto Salvo: 150-300 mm | ✅ 184.9 mm | ✅ 184.9 mm |
-| `bell-2026-10-11T0930` | frame rejected | ❌ usable | — no frame decision |
-| `bell-2026-10-11T0930` | the bell's peak (7,348 mm): 0-100 mm or not measured | ❌ 6180.7 mm | ✅ not measured |
-| `bell-2026-10-11T0930` | the bell's edge: 88 mm where the :00 frame reads 9: 0-30 mm or not measured | ❌ 87.7 mm | ❌ 87.7 mm |
-| `after-bell-2026-10-11T10` | frame usable | ✅ usable | — no frame decision |
-| `after-bell-2026-10-11T10` | Gran Sasso, the point of limen#235 (7.3 mm in the :00 series): 2-30 mm | ✅ 7.3 mm | ❌ not measured |
-| `bell-2026-10-09T0630` | frame rejected | ❌ usable | — no frame decision |
-| `bell-2026-10-09T0630` | the bell's peak (13,226 mm): 0-100 mm or not measured | ❌ 10184.8 mm | ✅ not measured |
-| `bell-2026-10-25T0630` | frame rejected | ❌ usable | — no frame decision |
-| `bell-2026-10-25T0630` | the bell's peak (10,861 mm): 0-100 mm or not measured | ❌ 6510.3 mm | ✅ not measured |
-| `calm-2026-10-04T06` | frame usable | ✅ usable | — no frame decision |
-| `calm-2026-10-04T06` | at most 0.1% of pixels masked | ✅ 0.00% masked | ✅ 0.00% masked |
-| `calm-2026-10-06T06` | frame usable | ✅ usable | — no frame decision |
-| `calm-2026-10-06T06` | at most 0.1% of pixels masked | ✅ 0.00% masked | ✅ 0.00% masked |
-| `steady-bump-2026-10-07T12` *(suspect)* | the bump (1,152 mm): 0-300 mm or not measured | ❌ 999.9 mm | ❌ 999.9 mm |
-| `sardinia-disks-2026-10-21T00` *(suspect)* | inside the disks, at sea (59 mm): 0-5 mm or not measured | ❌ 56.2 mm | ❌ 56.2 mm |
-| **Score** | confirmed · suspect | confirmed: 10/18 · suspect: 0/2 | confirmed: 8/18 · suspect: 0/2 |
+| Case | Check | `accept-all` | `limen-max-step` | `jump-sign` |
+|---|---|---|---|---|
+| `melito-2026-10-10T06` | frame usable | ✅ usable | — no frame decision | ✅ usable |
+| `melito-2026-10-10T06` | Melito di Porto Salvo: 100-300 mm | ✅ 174.7 mm | ✅ 174.7 mm | ✅ 174.7 mm |
+| `melito-2026-10-10T06` | Bagaladi: 80-250 mm | ✅ 113.1 mm | ✅ 113.1 mm | ✅ 113.1 mm |
+| `melito-2026-10-10T06` | Lipari: a cloudburst the radar did not see: not reliable | — no reliability | — no reliability | — no reliability |
+| `melito-2026-10-11T00` | Melito di Porto Salvo: 150-300 mm | ✅ 184.9 mm | ✅ 184.9 mm | ✅ 184.9 mm |
+| `bell-2026-10-11T0930` | frame rejected | ❌ usable | — no frame decision | ✅ rejected |
+| `bell-2026-10-11T0930` | the bell's peak (7,348 mm): 0-100 mm or not measured | ❌ 6180.7 mm | ✅ not measured | ✅ not measured |
+| `bell-2026-10-11T0930` | the bell's edge: 88 mm where the :00 frame reads 9: 0-30 mm or not measured | ❌ 87.7 mm | ❌ 87.7 mm | ✅ not measured |
+| `after-bell-2026-10-11T10` | frame usable | ✅ usable | — no frame decision | ✅ usable |
+| `after-bell-2026-10-11T10` | Gran Sasso, the point of limen#235 (7.3 mm in the :00 series): 2-30 mm | ✅ 7.3 mm | ❌ not measured | ✅ 7.3 mm |
+| `bell-2026-10-09T0630` | frame rejected | ❌ usable | — no frame decision | ✅ rejected |
+| `bell-2026-10-09T0630` | the bell's peak (13,226 mm): 0-100 mm or not measured | ❌ 10184.8 mm | ✅ not measured | ✅ not measured |
+| `bell-2026-10-25T0630` | frame rejected | ❌ usable | — no frame decision | ✅ rejected |
+| `bell-2026-10-25T0630` | the bell's peak (10,861 mm): 0-100 mm or not measured | ❌ 6510.3 mm | ✅ not measured | ✅ not measured |
+| `calm-2026-10-04T06` | frame usable | ✅ usable | — no frame decision | ✅ usable |
+| `calm-2026-10-04T06` | at most 0.1% of pixels masked | ✅ 0.00% masked | ✅ 0.00% masked | ✅ 0.00% masked |
+| `calm-2026-10-06T06` | frame usable | ✅ usable | — no frame decision | ✅ usable |
+| `calm-2026-10-06T06` | at most 0.1% of pixels masked | ✅ 0.00% masked | ✅ 0.00% masked | ✅ 0.00% masked |
+| `steady-bump-2026-10-07T12` *(suspect)* | the bump (1,152 mm): 0-300 mm or not measured | ❌ 999.9 mm | ❌ 999.9 mm | ❌ 999.9 mm |
+| `sardinia-disks-2026-10-21T00` *(suspect)* | inside the disks, at sea (59 mm): 0-5 mm or not measured | ❌ 56.2 mm | ❌ 56.2 mm | ❌ 56.2 mm |
+| **Score** | confirmed · suspect | confirmed: 10/18 · suspect: 0/2 | confirmed: 8/18 · suspect: 0/2 | confirmed: 17/18 · suspect: 0/2 |
 
 "—" means the method does not decide; it counts as not passed.
 
@@ -73,6 +79,29 @@ more than 150 mm in 30 minutes. `accept-all` trusts everything.
   of 6,381 mm. The median does not remove it; the 150 mm rule does.
 - **Nobody knows where the radar is blind** (Lipari): that is the reliability
   map of [#3](https://github.com/agent-engineering-studio/dpc-radar/issues/3).
+
+### Checked on whole frames, not only on the cases
+
+Ten cases are few, and they are cropped. `benchmarks.season` runs a method on
+every pair of whole frames in a folder. On the 96 pairs of CUM24 frames kept
+from 25 September to 4 November 2026, `jump-sign` rejects **44 frames, all at
+:30, all on the days the :30 series is known to be corrupted**, and **no frame
+at :00**, not even during the Melito storm. It also catches what the daily
+check missed: smaller corruptions in the evening of 11 October (:30 frames at
+370–430 mm where the :00 ones read ~170) and one :30 frame on 7 October.
+
+```bash
+uv run --group bench python -m benchmarks.season .cache/dpc-radar/CUM24 jump-sign
+```
+
+**Its limits.** It needs the frame before. It assumes a corruption adds rain:
+a corruption that removes it would be read the wrong way round. A real
+cloudburst of more than 150 mm in 30 minutes on five pixels would be rejected
+(that is near the Italian records for 30 minutes). And it cannot see what does
+not move between frames: the steady bump and the Sardinia disks are still
+there, waiting for the reliability map
+([#3](https://github.com/agent-engineering-studio/dpc-radar/issues/3)) and a
+learned check.
 
 ## Run it
 

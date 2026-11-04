@@ -56,4 +56,53 @@ class LimenMaxStep:
         return None
 
 
-METHODS: dict[str, Method] = {m.name: m for m in (AcceptAll(), LimenMaxStep())}
+@dataclass(frozen=True)
+class JumpSign:
+    """A decision on the whole frame, from the sign of the jump (#6, first step).
+
+    Two CUM24 frames 30 minutes apart can differ by at most half an hour of
+    rain. Where they differ by more than ``max_step``, one of the two is wrong,
+    and in every corruption seen so far the wrong one is the *higher* one: the
+    corruption adds rain, it never removes it. So:
+
+    * jumps up on at least ``min_pixels`` pixels: this frame is the wrong one,
+      reject it whole (the caller falls back to the frame before);
+    * jumps down: the frame before was the wrong one; keep this one intact;
+    * fewer than ``min_pixels`` jumps: mask just those pixels, as Limen does.
+
+    Limits: it needs the frame before; it cannot see artefacts that do not
+    move between frames (sea clutter, a steady bump); in this benchmark it
+    decides on the case's area, not on the whole of Italy.
+    """
+
+    max_step: float = 150.0
+    min_pixels: int = 5
+    name: str = "jump-sign"
+    description: str = "reject the frame that jumps up > 150 mm; keep the one after it (#6)"
+
+    def _jumps(self, frame: Frame, previous: Frame) -> tuple[np.ndarray, np.ndarray]:
+        diff = frame.data - previous.data  # NaN where either has no data
+        bad = np.isfinite(diff) & (np.abs(diff) > self.max_step)
+        return diff, bad
+
+    def frame_ok(self, frame: Frame, previous: Frame) -> bool | None:
+        diff, bad = self._jumps(frame, previous)
+        if bad.sum() < self.min_pixels:
+            return True
+        return bool(np.median(diff[bad]) < 0)
+
+    def clean(self, frame: Frame, previous: Frame) -> np.ndarray:
+        diff, bad = self._jumps(frame, previous)
+        if bad.sum() >= self.min_pixels:
+            if np.median(diff[bad]) < 0:
+                return frame.data  # the frame before was the wrong one
+            return np.full_like(frame.data, np.nan)  # this one is wrong: nothing measured
+        out = frame.data.copy()
+        out[bad] = np.nan
+        return out
+
+    def reliable(self, lon: float, lat: float) -> bool | None:
+        return None
+
+
+METHODS: dict[str, Method] = {m.name: m for m in (AcceptAll(), LimenMaxStep(), JumpSign())}
