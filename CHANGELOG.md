@@ -16,6 +16,11 @@ All notable changes to this project are documented here. The format follows
 - `history` (extra `history`, `numcodecs`): `SriHistory` reads the IT-DPC-SRI
   Zarr store (2010-2025) with no zarr or xarray; `hourly` with the same
   signature as `MergingArchive.hourly`.
+- `bulletins` (extra `bulletins`, `shapely`): the DPC criticality bulletin
+  from its GitHub repository, today and tomorrow: `latest`, `fetch`,
+  `latest_name`; each `Zone` with its levels (map, hydro-geological,
+  hydraulic, thunderstorms; 0-3), municipalities and shape;
+  `Bulletin.alerts()` and `Bulletin.zone_at(lon, lat)`.
 
 ### Changed
 

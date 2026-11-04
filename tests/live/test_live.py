@@ -10,8 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from dpc_radar import ABSENT, CUM3, SRI, RadarClient, RainGrid
+from dpc_radar import ABSENT, CUM3, SRI, RadarClient, RainGrid, bulletins
 from dpc_radar.archive import MergingArchive, archive
+from dpc_radar.bulletins import COLOURS
 
 pytestmark = pytest.mark.live
 
@@ -50,3 +51,11 @@ async def test_archive_three_hours_and_read_them(tmp_path: Path) -> None:
     assert report.downloaded == 2 + 4 and report.failed == 0
     rain = MergingArchive(tmp_path).hourly([(12.5, 42.0)], start, end)
     assert sorted(rain) == [start + timedelta(hours=h) for h in (1, 2, 3)]
+
+
+async def test_latest_bulletin_covers_italy() -> None:
+    bulletin = await bulletins.latest()
+    assert len(bulletin.days()) == 2
+    assert len([z for z in bulletin.zones if z.valid == bulletin.days()[0]]) > 150
+    rome = bulletin.zone_at(12.50, 41.90)
+    assert rome is not None and rome.level in COLOURS
