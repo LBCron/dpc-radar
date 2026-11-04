@@ -21,19 +21,17 @@ you use those maps from a script: which frame is the latest, how to download
 it, and how to read the API's answers, including its surprises.
 
 ```python
-from dpc_radar import CUM24, parse_last_product, products
-
-url, params = products.last_product_url(CUM24)  # GET it, with products.HEADERS
-latest = parse_last_product(answer)  # time and period of the newest frame
+async with RadarClient() as radar:
+    rain = await radar.latest("CUM24")  # the last 24 hours of rain, all of Italy
+print(rain.sample([(15.78, 37.92)]))  # mm at Melito di Porto Salvo (184.9 on 10 October 2026)
 ```
 
 > **Work in progress.** dpc-radar is being extracted from
-> [Limen](https://github.com/agent-engineering-studio/limen), where this code
-> already runs in production. Today it holds the products and the API
-> requests and answers. The rain grid, the client, the archive, the
-> 2010–2025 history and the criticality bulletins follow, one pull request at
-> a time: see the [roadmap](https://agentengineering.it/dpc-radar/roadmap/).
-> Nothing is on PyPI yet.
+> [Limen](https://github.com/agent-engineering-studio/limen). Today it holds
+> the products, the rain grid and the client. The archive, the 2010–2025
+> history and the criticality bulletins follow, one pull request at a time:
+> see the [roadmap](https://agentengineering.it/dpc-radar/roadmap/). Nothing is
+> on PyPI yet.
 
 ---
 
@@ -175,65 +173,78 @@ pip install dpc-radar   # not on PyPI yet: for now, install from git
 pip install "dpc-radar @ git+https://github.com/agent-engineering-studio/dpc-radar"
 ```
 
-Python 3.12 or newer. The core has **no dependencies**: it builds requests
-and reads answers, and you send them with the HTTP library you like.
+Python 3.12 or newer. It depends on `httpx`, `numpy` and `rasterio`.
 
 No account and no key: the DPC data are open.
 
-### 2. Ask for the latest frame
+### 2. Get the latest frame
 
 ```python
-import httpx
+import asyncio
 
-from dpc_radar import CUM24, parse_last_product, products
+from dpc_radar import RadarClient
 
-url, params = products.last_product_url(CUM24)
-answer = httpx.get(url, params=params, headers=products.HEADERS).json()
 
-latest = parse_last_product(answer)
-print(latest.time, latest.period)
-# 2026-11-04 11:00:00+00:00 0:30:00   (a new CUM24 every 30 minutes)
+async def main() -> None:
+    async with RadarClient() as radar:
+        rain = await radar.latest("CUM24")
+    print(rain.product.name, rain.time)  # CUM24 2026-11-04 14:00:00+00:00
+    print(rain.data.shape)  # (1233, 1341): 0.01° pixels, NaN where the radar does not see
+
+
+asyncio.run(main())
 ```
 
-### 3. Download it
+### 3. Read the rain at a place
 
 ```python
-from dpc_radar import is_expired, parse_download
+melito, reggio = (15.78, 37.92), (15.65, 38.11)  # lon, lat in degrees
+print(rain.sample([melito, reggio]))  # mm in the last 24 hours, or None if not measured
+print(rain.peak((15.25, 37.75, 17.25, 39.45), threshold=50))  # (highest mm, pixels >= 50)
+```
 
-r = httpx.post(
-    products.download_url(),
-    json=products.download_body(CUM24, latest.time),
-    headers=products.HEADERS,
-)
-if is_expired(r.status_code, r.text):
-    print("the DPC no longer keeps this frame")  # never worth a retry
+`sample` reads the **median of the 3×3 pixels** around each point, never one
+pixel, and answers `None` where the radar has no data: not measured is not
+the same as dry.
+
+### 4. Check a frame before you trust it
+
+```python
+async with RadarClient() as radar:
+    now = await radar.latest("CUM24")
+    before = await radar.at("CUM24", now.time - now.product.period)  # 30 minutes earlier
+
+check = now.check(before, max_step=150)  # mm: more than half an hour of rain
+if check.grid is None:
+    rain = before  # rejected: this frame jumped up where no rain can fall that fast
 else:
-    tiff = httpx.get(parse_download(r.json())).content  # a GeoTIFF, rain in mm
+    rain = check.grid  # consistent, or the frame before was the wrong one
+print(check.verdict, check.jumps)
 ```
 
-That's it: `tiff` is a GeoTIFF of 1,341 × 1,233 pixels (0.01° each) covering Italy,
-with `-9999` where the radar does not see.
+A frame older than about five months is gone: `radar.at(...)` returns
+`ABSENT` instead of raising, and never retries it.
 
-### 4. Look at it
+### 5. Look at it
 
-With `pip install rasterio matplotlib`:
+With `pip install matplotlib`:
 
 ```python
-import io
-
 import matplotlib.pyplot as plt
-import numpy as np
-import rasterio
 
-with rasterio.open(io.BytesIO(tiff)) as src:
-    rain = src.read(1)
-    w, s, e, n = src.bounds
-
-rain = np.where(rain < 0, np.nan, rain)  # -9999: no data
-plt.imshow(rain, extent=(w, e, s, n), cmap="Blues", vmin=0, vmax=50)
+h, w = rain.data.shape
+left, top = rain.transform.c, rain.transform.f
+right, bottom = left + w * rain.transform.a, top + h * rain.transform.e
+plt.imshow(rain.data, extent=(left, right, bottom, top), cmap="Blues", vmin=0, vmax=50)
 plt.colorbar(label="rain in the last 24 hours (mm)")
 plt.show()
 ```
+
+### Without the client
+
+Every step is also a plain function, if you have your own HTTP stack:
+`products.last_product_url`, `parse_last_product`, `products.download_body`,
+`parse_download`, `is_expired`, then `RainGrid.from_geotiff(raw, product, time)`.
 
 ---
 
@@ -279,22 +290,27 @@ flowchart TD
 
 ### The building blocks
 
-The core is **pure**: no network, no files. It builds requests and reads
-answers, so it is easy to test and works with any HTTP stack, sync or async.
+Three layers. `products` is **pure**: it builds requests and reads answers,
+with no network. `grid` turns a GeoTIFF into an array you can sample and
+check. `client` wires them to **your** `httpx.AsyncClient`, so timeouts,
+retries and proxies stay under your control.
 
 ```mermaid
 flowchart LR
     subgraph yours["Your code"]
-        H["httpx · requests · aiohttp<br/>(timeouts, retries, proxy)"]
+        H["httpx.AsyncClient<br/>or a send= hook"]
     end
     subgraph lib["dpc_radar"]
         direction TB
+        CL["client.py<br/>RadarClient · latest · at · ABSENT"]
         PR["products.py<br/>SRI · SRT1 · CUM3–24<br/>requests · parsers · is_expired"]
+        GR["grid.py<br/>RainGrid · sample · peak · crop · check"]
         ER["errors.py<br/>DpcRadarError"]
-        GR["grid.py · client.py · archive.py<br/>(coming from Limen)"]:::next
+        NX["archive · history · bulletins<br/>(coming from Limen)"]:::next
     end
-    H --> PR
-    PR --> ER
+    H --> CL
+    CL --> PR
+    CL --> GR
     classDef next stroke-dasharray: 5 5
 ```
 
@@ -328,6 +344,15 @@ them. Limen's rule today passes 8 of 18 checks; a first frame-level check
 
 | Name | What it is |
 |---|---|
+| `RadarClient(client=None, send=None, retries=3)` | the client: `async with`, your `httpx.AsyncClient` or a `send` hook |
+| `radar.latest(p, cached=None)` | the newest frame as a `RainGrid`; `cached` skips the download if it is still the newest |
+| `radar.at(p, time)` / `radar.download(p, time)` | the frame issued at `time` as a grid / as GeoTIFF bytes, or `ABSENT` |
+| `radar.last_product(p)` | time and period of the newest frame |
+| `RainGrid` | one frame: `product`, `time`, `data` (NaN = no data), `transform`, `crs` |
+| `grid.sample(points)` | the value at lon/lat points: median of the 3×3 pixels, `None` if not measured |
+| `grid.peak(bbox, threshold=)` / `grid.crop(bbox)` | highest value and pixels above a threshold in a box / the box as a grid |
+| `grid.check(previous, max_step=)` | `FrameCheck(verdict, grid, jumps)`: whether to trust a frame, given the one before |
+| `ABSENT` | a frame the DPC no longer keeps |
 | `SRI`, `SRT1`, `CUM3`, `CUM6`, `CUM12`, `CUM24` | the products: `name`, `hours` (`None` for an intensity), `merging`, `description` |
 | `PRODUCTS`, `product(name)` | every product by name; `product("cum24")` → `CUM24` |
 | `products.last_product_url(p)` | URL and params of the "latest frame" request (a `GET`) |
@@ -339,7 +364,7 @@ them. Limen's rule today passes 8 of 18 checks; a first frame-level check
 | `products.to_epoch_ms`, `from_epoch_ms`, `parse_period` | the API's times and periods (`PT5M`, `PT30M`) |
 | `DpcRadarError` | an answer the library cannot read, or a bad argument |
 
-Full reference: **https://agentengineering.it/dpc-radar/api/products/**
+Full reference: **https://agentengineering.it/dpc-radar/api/client/**
 
 ---
 
@@ -399,8 +424,12 @@ real API.
 dpc-radar/
 ├── src/dpc_radar/
 │   ├── products.py   # products, requests, parsers, is_expired: pure functions
+│   ├── grid.py       # RainGrid: read a frame, sample, peak, crop, check
+│   ├── client.py     # RadarClient: latest, at, download, ABSENT
 │   └── errors.py     # DpcRadarError
-├── tests/
+├── tests/            # offline: synthetic GeoTIFFs and a fake API
+│   └── live/         # the same on the real API: uv run pytest -m live
+├── benchmarks/       # known cases, and how each cleaning rule scores
 └── docs/
     ├── make_images.py  # the images of this README, from real frames
     └── roadmap.md      # what comes next, and where AI helps

@@ -63,6 +63,8 @@ validation:
 nav:
   - Home: index.md
   - API reference:
+      - Client: api/client.md
+      - Rain grid: api/grid.md
       - Products and API: api/products.md
       - Errors: api/errors.md
   - Benchmark: benchmark.md

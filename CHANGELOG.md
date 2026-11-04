@@ -12,6 +12,17 @@ All notable changes to this project are documented here. The format follows
   `findLastProductByType` and `downloadProduct`, the parsers of their answers,
   and `is_expired` for a frame the DPC no longer keeps.
 - `DpcRadarError`.
+- `grid`: `RainGrid`, one frame as an array (NaN where there is no data), from
+  its GeoTIFF; `sample` (median of the 3×3 pixels), `peak`, `crop`, and
+  `check(previous, max_step=)`, the frame-level `jump-sign` rule: the frame
+  that jumps up is rejected, the one after a corrupted frame kept whole.
+  `discard_inconsistent` kept for comparison with Limen.
+- `client`: `RadarClient` with an injectable `httpx.AsyncClient`, retries
+  with backoff on network errors and 429/5xx, a `send=` hook; `latest`
+  (with `cached=`), `at`, `download`, `last_product`; `ABSENT` for a frame the
+  DPC no longer keeps, never retried.
+- `Product.period`: 5 minutes for SRI and SRT1, 30 for the CUM products.
+- Core dependencies: `httpx`, `numpy`, `rasterio`.
 - `benchmarks/`: known cases of the DPC radar data (Melito and Lipari on
   10 October 2026, the corrupted :30 CUM24 series, calm days, two suspect
   artefacts), a runner that scores cleaning methods on them, and Limen's

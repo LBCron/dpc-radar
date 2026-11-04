@@ -106,3 +106,8 @@ def test_expired_frame_is_a_500_with_s3_403_in_the_body() -> None:
     assert p.is_expired(500, _EXPIRED)
     assert not p.is_expired(500, "Internal Server Error")
     assert not p.is_expired(200, _EXPIRED)
+
+
+def test_period_matches_the_api() -> None:
+    assert p.SRI.period == timedelta(minutes=5) == p.SRT1.period
+    assert p.CUM3.period == timedelta(minutes=30) == p.CUM24.period

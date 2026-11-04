@@ -2,7 +2,9 @@
 
 from importlib.metadata import version
 
+from dpc_radar.client import ABSENT, Absent, RadarClient
 from dpc_radar.errors import DpcRadarError
+from dpc_radar.grid import FrameCheck, RainGrid
 from dpc_radar.products import (
     API_BASE,
     CUM3,
@@ -23,6 +25,7 @@ from dpc_radar.products import (
 __version__ = version("dpc-radar")
 
 __all__ = [
+    "ABSENT",
     "API_BASE",
     "CUM3",
     "CUM6",
@@ -31,9 +34,13 @@ __all__ = [
     "PRODUCTS",
     "SRI",
     "SRT1",
+    "Absent",
     "DpcRadarError",
+    "FrameCheck",
     "LastProduct",
     "Product",
+    "RadarClient",
+    "RainGrid",
     "__version__",
     "is_expired",
     "parse_download",

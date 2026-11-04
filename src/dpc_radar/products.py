@@ -46,6 +46,15 @@ class Product:
     merging: bool
     description: str
 
+    @property
+    def period(self) -> timedelta:
+        """How often a new frame comes out: 30 minutes for the «Merging», 5 for radar only.
+
+        The same as the ``period`` the API returns (``PT30M``, ``PT5M``): the
+        frame before one issued at ``t`` is the one issued at ``t - period``.
+        """
+        return timedelta(minutes=30 if self.merging else 5)
+
 
 #: Surface Rainfall Intensity: radar only, mm/h, a frame every 5 minutes.
 SRI: Final = Product("SRI", None, False, "rain intensity, radar only (mm/h)")

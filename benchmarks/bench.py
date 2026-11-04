@@ -17,20 +17,20 @@ from __future__ import annotations
 import math
 import tomllib
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
 import numpy as np
 import rasterio
 from affine import Affine
+from rasterio.crs import CRS
+
+from dpc_radar import product
 
 HERE = Path(__file__).parent
 CASES = HERE / "cases.toml"
 FRAMES = HERE / "frames"
-
-#: How far back the previous frame of each product is.
-PERIOD = {"CUM3": 30, "CUM6": 30, "CUM12": 30, "CUM24": 30, "SRI": 5, "SRT1": 5}
 
 Outcome = Literal["pass", "fail", "none"]
 
@@ -41,13 +41,14 @@ class Frame:
 
     data: np.ndarray
     transform: Affine
+    crs: CRS
 
     @classmethod
     def read(cls, path: Path) -> Frame:
         with rasterio.open(path) as src:
             data = src.read(1).astype("float64")
             data[data < 0] = np.nan  # -9999: no data
-            return cls(data, src.transform)
+            return cls(data, src.transform, src.crs)
 
     def index(self, lon: float, lat: float) -> tuple[int, int]:
         col, row = ~self.transform * (lon, lat)
@@ -89,7 +90,7 @@ class Case:
 
     @property
     def previous_time(self) -> datetime:
-        return self.time - timedelta(minutes=PERIOD[self.product])
+        return self.time - product(self.product).period
 
     def paths(self) -> tuple[Path, Path]:
         folder = FRAMES / self.id

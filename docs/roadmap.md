@@ -111,7 +111,7 @@ calibration also needs. **Check:** new verified events per month of archive.
 
 ---
 
-## Phase 1 · after `grid` and `client` move here
+## Phase 1 · now that `grid` and `client` are here
 
 ### Learned frame check · [#6](https://github.com/agent-engineering-studio/dpc-radar/issues/6) · effort M
 
@@ -135,8 +135,8 @@ clean.
 | Module | What it does | Status |
 |---|---|---|
 | `products` | the six products, the API requests and answers, `is_expired` | ✅ done |
-| `grid` | `RainGrid`: read a frame, sample a point with the **3×3 median**, crop, compare with the frame before | planned |
-| `client` | `RadarClient.latest(product)`, `.at(product, time)` → a grid or `Absent`; injectable `httpx` client | planned |
+| `grid` | `RainGrid`: read a frame, sample a point with the **3×3 median**, peak, crop, and `check` against the frame before (`jump-sign`) | ✅ done |
+| `client` | `RadarClient.latest(product)`, `.at(product, time)` → a grid or `ABSENT`; injectable `httpx` client, retries, `send=` hook | ✅ done |
 | `archive` | `MergingArchive`: save the «Merging» before the DPC deletes it; split a 3-hour total into hours with SRT1 | planned |
 | `history` | read the IT-DPC-SRI archive (2010–2025) with no zarr or xarray | planned, extra `[history]` |
 | `bulletins` | the daily DPC criticality bulletin as data | to decide, extra `[bulletins]` |
