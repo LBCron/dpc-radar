@@ -1,152 +1,206 @@
 # Roadmap and AI
 
-Where dpc-radar could go next, and how AI can help. Nothing here is a
-promise. The point is to pick a direction together: open an issue before you
-start one of these.
+Where dpc-radar goes next, and how AI and machine learning can make the radar
+data better. Nothing here is a promise. Every item has an issue: comment there
+before you start. The whole plan is tracked in
+[#10](https://github.com/agent-engineering-studio/dpc-radar/issues/10).
 
 dpc-radar is being extracted from
 [Limen](https://github.com/agent-engineering-studio/limen), an open
 early-warning system for landslides, floods and wildfires in Italy. Limen
 uses the DPC radar three ways: as a **trigger** (heavy rain on the radar
 starts a run at once), as **rain already fallen** (the «Merging» totals feed
-the flood score), and as **history** (2010–2025 radar rain replays past
-landslides). Every improvement below lands in this library first, and Limen
-gets it by updating one pin.
+the flood score and the wildfire drought codes), and as **history** (radar
+rain from 2010 to 2025 replays past landslides). Every improvement below lands
+in this library first, and Limen gets it by updating one pin.
+
+## The goal we measure against
+
+Limen has one goal that decides whether it is useful
+([limen#345](https://github.com/agent-engineering-studio/limen/issues/345)):
+**anticipate within 72 hours 90 % of the landslides, floods and wildfires
+reported in the news, with at most 10 % of municipality-days on alert.** The
+two numbers always go together: without the second, it is easy to catch
+everything by putting everything on alert.
+
+On 29 October 2026 Limen anticipated **0 of 4** landslides and **0 of 4**
+floods. The radar is part of the reason, and of the fix.
+
+## What limits Limen today
+
+| Problem | Where it shows | What the radar has to do with it |
+|---|---|---|
+| **Alerts were the background, not a forecast** | the four landslides were ≥ Moderate for 64–80 h, but so were ordinary days ([limen#345](https://github.com/agent-engineering-studio/limen/issues/345)) | one national rain threshold cannot work: 50 mm is common in Liguria, exceptional in Apulia |
+| **Too few events to measure** | "eight events are an anecdote, not a statistic" | the radar sees every storm, including the ones nobody has verified yet |
+| **Corrupted frames** | pixels moving 900–20,584 mm between frames ([limen#235](https://github.com/agent-engineering-studio/limen/issues/235)) | today a fixed rule, `max_step_mm: 150`, throws them away |
+| **A blind radar reads as dry** | the cloudburst on Lipari, 10/10/2026, which the radar did not see | Limen cannot tell "no rain" from "no radar here" |
+| **The radar arrives late** | Melito, 10/10/2026: forecast 20 mm, radar 152 mm | the radar only shows rain that has already fallen |
+| **A biased history** | the radar-only archive read 10–80 % of the gauges in Apulia in 2016 | landslide backtests ([limen#243](https://github.com/agent-engineering-studio/limen/issues/243)) rest on it |
+
+## How we introduce AI
 
 ```mermaid
 flowchart LR
-    A["1 · Foundations<br/>grid, client, archive,<br/>history, bulletins"] --> B["2 · Better data<br/>frame checks, clutter,<br/>radar–gauge bias"]
-    B --> C["3 · Nowcasting<br/>the next 0–2 hours"]
-    B --> D["4 · AI for people and agents<br/>MCP server, llms.txt,<br/>reports that cite their frames"]
-    A & B & C & D -.->|"one pin: dpc-radar~=x.y"| L["Limen<br/>trigger · flood score ·<br/>backtest · FWI rain"]
+    B["Benchmark<br/>known cases"] --> P0["Phase 0<br/>reliability map<br/>climatology<br/>storm catalogue"]
+    P0 --> P1["Phase 1<br/>learned frame check"]
+    P1 --> P2["Phase 2<br/>nowcasting<br/>radar–gauge bias"]
+    P2 --> P3["Phase 3<br/>MCP · llms.txt<br/>event reports"]
+    P0 & P1 & P2 & P3 -.->|"one pin: dpc-radar~=x.y"| L["Limen<br/>measured on its 72 h goal"]
 ```
+
+1. **Benchmark first, then models.** A fixed set of cases where we already
+   know the answer. Every method passes it before it reaches Limen.
+2. **Machine learning on the data, language models only on language.**
+   Statistics, gradient boosting and optical flow work on the frames. A
+   language model may read news, choose what to compute and explain the
+   result in words.
+3. **Measured on Limen's goal.** Each item says which number of limen#345
+   it should move, and how we check it.
 
 !!! warning "Ground rule for every AI feature"
     Rain values come from DPC frames, read by code that is tested. A
-    language model may choose *what* to compute and explain it in words. It
-    never produces a millimetre, a time or a place itself. Every answer
-    names the product and the frame time it came from. Nothing this library
-    produces is an official warning: the official one is the DPC criticality
-    bulletin, and every AI output links to it.
+    language model never produces a millimetre, a time or a place itself.
+    Every answer names the product and the frame time it came from. Nothing
+    this library produces is an official warning: the official one is the
+    DPC criticality bulletin, and every AI output links to it.
 
 ---
 
-## 1 · Foundations
+## Phase 0 · now, without touching Limen's code
 
-This code already runs in Limen. It moves here one pull request at a time,
-with its tests.
+Limen's radar code moves here only after 16 November 2026, so this phase works
+on notebooks, data and the benchmark.
 
-| Module | What it does | Why it matters | Status |
-|---|---|---|---|
-| `products` | the six products, the API requests and answers, `is_expired` | the base for everything else | ✅ done |
-| `grid` | `RainGrid`: read a frame, sample a point with the **3×3 median**, crop a box, `discard_inconsistent(previous, max_step)` | one hot pixel (Limen once saw 7,348 mm) must never become rain | planned |
-| `client` | `RadarClient.latest(product)`, `.at(product, time)` → a grid or `Absent`; injectable `httpx` client and retries | "gone" and "network error" are different answers | planned |
-| `archive` | `MergingArchive`: save the «Merging» before the DPC deletes it; `rain_from_radar` splits a 3-hour total into hours using SRT1 | the DPC keeps about five months; the «Merging» has no public archive | planned |
-| `history` | read the IT-DPC-SRI archive (2010–2025, radar only) with no zarr or xarray | fifteen years of radar rain for backtests | planned, extra `[history]` |
-| `bulletins` | the daily DPC criticality bulletin as data | the official alert, to compare against | to decide, extra `[bulletins]` |
+### Benchmark of known cases · [#2](https://github.com/agent-engineering-studio/dpc-radar/issues/2)
 
----
+| Case | What happened | Expected |
+|---|---|---|
+| Melito di Porto Salvo, 10/10/2026 | 185 mm «Merging» in 24 h; forecast 20 mm | heavy rain, real |
+| Lipari, 10/10/2026 | a cloudburst the radar did not see | radar blind here |
+| Corrupted CUM24, 9–11/10/2026 | pixels moving 900–20,584 mm | frame not usable |
+| Hot pixel, 11/10/2026 | 7,348 mm in one pixel | pixel not usable |
+| Disks west of Sardinia, 20/10/2026 | circular fields centred on one radar | probably not rain |
+| Calm days, 1, 4, 6/10/2026 | nothing | nothing |
 
-## 2 · Better data: machine learning on the frames
+The frames are cropped and committed (CC BY-SA, with attribution), with a
+runner that prints one line per case. The DPC keeps about five months: the
+October 2026 frames disappear around March 2027, so they are saved now.
 
-These are classic, explainable methods (statistics, gradient boosting,
-small convolutional networks). No language model involved. Each one makes
-every frame more trustworthy, which is what Limen needs most: **a wrong frame
-is either a false alarm or a missed storm.**
+### Radar reliability map · [#3](https://github.com/agent-engineering-studio/dpc-radar/issues/3) · effort S
 
-| Feature | What it finds or fixes | Method | Gain for Limen | Effort |
-|---|---|---|---|---|
-| **Learned frame check** | a frame that is not rain: sea clutter, anomalous propagation, a radar with a calibration problem. These often show up as disks centred on one radar site | features per frame (rain around each radar site against its neighbours, change from the frame before, share of the sea that is "raining") → gradient boosting, trained on frames labelled by hand | fewer false nowcast triggers; replaces the fixed `max_step_mm` threshold with a score | M |
-| **Hot pixels** | isolated pixels with impossible values | robust spatial statistics (median and MAD of the 5×5 around a pixel), then an isolation forest on the leftovers | no more 7,348 mm cells in the flood score | S |
-| **Radar–gauge bias model** | how much the radar alone under- or over-estimates, by hour, season, distance from the radar and altitude | learn the ratio «Merging» / radar on the months where both exist; apply it to SRT1 every 5 minutes and to the 2010–2025 history | the radar-only history (which in Apulia in 2016 read 10–80 % of the gauges) becomes usable for backtests; a «Merging»-like field 25 minutes earlier | M |
-| **Quality flag per cell** | how much to trust a value at a place | distance from the nearest radar, beam blocking by mountains, gauge density | Limen can weight observed rain by its quality instead of all-or-nothing | S |
-| **Gap filling** | a missing frame in a series | interpolation along the storm's motion (optical flow), clearly marked as filled | an hourly total never silently loses a frame | S |
+One value per cell: distance from the nearest radar, beam blocking by
+mountains, density of rain gauges, and how often radar and «Merging» disagree
+there. **For Limen:** where the radar is blind, the forecast weighs more and
+radar zero is never "dry". **Check:** Lipari comes out as low reliability.
 
-The data to train and check all of these is already there: Limen's local
-archive of «Merging» and SRT1 (about 51 GB), and the rain gauges inside the
-«Merging» itself.
+### Rain climatology · [#4](https://github.com/agent-engineering-studio/dpc-radar/issues/4) · effort M
 
----
+From the 2010–2025 history, per cell and per window (1, 3, 6, 24 h):
+percentiles and a return period from an extreme-value fit.
+`climatology.rarity(...)` answers "this rain is a 1-in-N-years event here".
+**For Limen:** alert on rain that is unusual *for that place*, not over one
+national threshold. This is the largest expected effect on limen#345: fewer
+municipality-days on alert, without losing events. **Check:** both numbers
+of limen#345, with and without it, on held-out seasons.
 
-## 3 · Nowcasting: the next two hours
+### Storm catalogue · [#5](https://github.com/agent-engineering-studio/dpc-radar/issues/5) · effort M
 
-The radar shows rain *now*. Moving the current rain field forward along its
-own motion gives a forecast for the next 0–2 hours that is often better than
-any weather model at that range.
-
-| Step | What | Method | Gain for Limen | Effort |
-|---|---|---|---|---|
-| **Extrapolation** | `nowcast(grids, minutes=60)`: the rain field moved forward along its motion | optical flow (the method of [pySTEPS](https://pysteps.github.io/)), as an optional extra | the trigger fires on rain that is *coming*, not only on rain that is already there | M |
-| **Probabilities** | "chance of more than 20 mm in the next hour" per cell | an ensemble of perturbed extrapolations | flood and landslide scores get a probability, not a single number | M |
-| **Deep-learning nowcast** | storms that grow or die, which extrapolation cannot see | a U-Net or a generative model trained on the 2010–2025 archive | research first: a notebook, compared against extrapolation on the same storms | L |
-
-Every nowcast is labelled as a **forecast**, with its lead time, and is
-never mixed with observed rain.
+Group SRI cells into storm objects and track them from frame to frame (area,
+peak, duration, path). The most extreme storms over inhabited places become
+**candidate events**. **For Limen:** the radar says where to look; Limen's
+fact-check, which already reads the news with a language model, confirms or
+rejects. More verified events, and the storms without damage that a
+calibration also needs. **Check:** new verified events per month of archive.
 
 ---
 
-## 4 · AI for people and agents
+## Phase 1 · after `grid` and `client` move here
 
-### 4.1 An MCP server: the radar for any AI assistant
+### Learned frame check · [#6](https://github.com/agent-engineering-studio/dpc-radar/issues/6) · effort M
 
-**What.** An optional extra, `dpc-radar[mcp]`, with an
-[MCP](https://modelcontextprotocol.io/) server, `dpc-radar mcp`. It serves
-the library as tools to Claude, Claude Code, IDE assistants or any other MCP
-client:
+A score per frame and a mask per pixel, from explainable features: the jump
+from the frame before (today's rule, kept), symmetry around each radar site,
+rain over the sea against the land nearby, agreement between SRI, SRT1 and
+«Merging», local outliers. Gradient boosting, trained on frames labelled by
+hand, starting from the benchmark. **For Limen:** fewer false triggers, fewer
+pixels "not measured" for no reason, one rule for flood, wildfire and the
+trigger. **Check:** every quality case of the benchmark passes; calm days stay
+clean.
 
-| Tool | What it returns |
-|---|---|
-| `latest(product)` | the time and period of the newest frame |
-| `rain_at(lon, lat, hours)` | the rain at a point over the last 3, 6, 12 or 24 hours (3×3 median), with the frame time |
-| `area_summary(west, south, east, north, hours)` | area covered, mean, percentiles, the wettest cells, the share above 25 / 50 / 100 mm |
-| `storm_now(bbox)` | the SRI cells above a threshold, grouped into storms, with their size and peak |
-| `official_alert(region)` | the DPC bulletin for today and tomorrow, as published |
+### Foundations: the code that comes from Limen
 
-**Why.** Someone can ask "how much has it rained on Messina in the last 24
-hours?" and get an answer computed from the frame, with its time and source.
-It is also the fastest way to spread the library. The same server can give
-Limen's assistant its rain facts. Effort: **M**.
+| Module | What it does | Status |
+|---|---|---|
+| `products` | the six products, the API requests and answers, `is_expired` | ✅ done |
+| `grid` | `RainGrid`: read a frame, sample a point with the **3×3 median**, crop, compare with the frame before | planned |
+| `client` | `RadarClient.latest(product)`, `.at(product, time)` → a grid or `Absent`; injectable `httpx` client | planned |
+| `archive` | `MergingArchive`: save the «Merging» before the DPC deletes it; split a 3-hour total into hours with SRT1 | planned |
+| `history` | read the IT-DPC-SRI archive (2010–2025) with no zarr or xarray | planned, extra `[history]` |
+| `bulletins` | the daily DPC criticality bulletin as data | to decide, extra `[bulletins]` |
 
-### 4.2 `llms.txt` and a skill for coding agents
+---
 
-**What.** Publish `llms.txt` and `llms-full.txt` with this site (as
-[egms-client](https://agentengineering.it/egms-client/) already does), and
-an agent skill (`SKILL.md`) that tells a coding agent how to use the
-library, and above all the traps: no `CUM1`, a 500 that means "gone", the
-3×3 median, two grids that must not be mixed.
+## Phase 2 · more lead time, a better history
 
-**Why.** Those traps are exactly what a model gets wrong when it writes
-radar code from memory. Effort: **S**.
+### Nowcasting 0–2 hours · [#7](https://github.com/agent-engineering-studio/dpc-radar/issues/7) · effort M
 
-### 4.3 Event reports that cite their frames
+The SRI field moved forward along its own motion (optical flow, the method of
+[pySTEPS](https://pysteps.github.io/)), then an ensemble for probabilities.
+Always labelled as a **forecast**, never mixed with observed rain. A
+deep-learning nowcast stays a research notebook. **For Limen:** the trigger
+fires on rain that is coming, and the first two hours of the flood window use
+it instead of a ~9 km model that does not see thunderstorms. **Check:** CSI at
+30, 60, 120 minutes on the storm catalogue, then limen#345.
 
-**What.** `dpc-radar report --bbox ... --day 2026-10-10` writes a Markdown or
-HTML report: the maps, the hourly chart of the wettest cells, the radar
-against the «Merging», the official bulletin of that day, and a short text
-that describes them. The text is written from a JSON of computed figures,
-and every number in it is checked against that JSON before the report is
-saved (a sentence with a number that is not there is removed).
+### Radar–gauge bias model · [#8](https://github.com/agent-engineering-studio/dpc-radar/issues/8) · effort M
 
-**Why.** Municipalities, journalists and researchers need a readable summary
-of an event, and they need it to be right. Limen uses the same reports after
-every alert, to say what actually fell. Effort: **M**, after track 1.
+Learn how much the radar alone under- or over-estimates («Merging» against the
+sum of SRT1), by hour, season, distance from the radar, altitude and
+reliability, on Limen's local archive (~51 GB). Apply it every 5 minutes and to
+the 2010–2025 history. **For Limen:** credible backtests and a better
+climatology. **Check:** error against CUM3 on held-out months, by region.
 
-### 4.4 AI in the development loop
+---
+
+## Phase 3 · AI for people and agents
+
+### MCP server, `llms.txt`, event reports · [#9](https://github.com/agent-engineering-studio/dpc-radar/issues/9) · effort M
+
+- **MCP server** `dpc-radar mcp`, extra `[mcp]`: `latest`, `rain_at(lon, lat, hours)`,
+  `area_summary(bbox, hours)`, `storm_now(bbox)`, `rarity(...)`,
+  `official_alert(region)`. Someone can ask "how much has it rained on
+  Messina today?" and get an answer computed from the frame, with its time.
+- **`llms.txt`, `llms-full.txt` and an agent skill**, as in
+  [egms-client](https://agentengineering.it/egms-client/): the traps a model
+  gets wrong when it writes radar code from memory.
+- **Event reports** `dpc-radar report --bbox … --day …`: maps, the hourly
+  chart, radar against «Merging», the official bulletin, and a short text
+  written from a JSON of computed figures. Every number in the text is checked
+  against the JSON before the report is saved.
+
+**For Limen:** the same facts for its assistant and briefings, which run on a
+local model (faithfulness eval: 16 of 16 briefings with no invented number),
+as structured data instead of prose
+([limen#371](https://github.com/agent-engineering-studio/limen/issues/371)).
+
+### In the development loop
 
 | Idea | What | Effort |
 |---|---|---|
-| **Weekly live test** | a scheduled job that calls the real API (as egms-client's `live.yml` does) and fails when an answer changes shape, like the `origin` header that stopped being required in 2026 | S |
+| **Weekly live test** | a scheduled job that calls the real API and fails when an answer changes shape, like the `origin` header that stopped being required in 2026 | S |
 | **Issue on failure** | when the live test fails, an agent opens an issue with the old and new answer side by side | S |
-| **Parity test with Limen** | the same frame sampled by Limen and by the library must give the same values on the cells of Melito and the Reggio area | S |
+| **Parity test with Limen** | the same frame sampled by Limen and by the library gives the same values on the cells of Melito and the Reggio area | S |
 
 ---
 
 ## What Limen gains, in one table
 
-| Limen today | With dpc-radar | Track |
-|---|---|---|
-| a fixed threshold to throw away a bad frame | a learned score per frame, the same for every user of the library | 2 |
-| radar-only history that under-estimates | a history corrected with a radar–gauge bias model | 2 |
-| a trigger on rain that is already there | a trigger on rain that is coming (0–2 h) | 3 |
-| summaries written by hand | reports where every number is checked against the frames | 4 |
-| its own copy of the DPC client | one library, tested on its own, used by Limen and anyone else | 1 |
+| Limen today | With dpc-radar | Issue | Number of limen#345 it should move |
+|---|---|---|---|
+| one national rain threshold | rain judged against the climate of each cell | #4 | fewer municipality-days on alert |
+| 8 verified events | candidate events from the storm catalogue, checked in the news | #5 | a denominator worth measuring |
+| radar zero read as dry where the radar is blind | a reliability map | #3 | fewer missed events |
+| a fixed 150 mm rule for bad frames | a learned score per frame and pixel | #6 | fewer false alarms |
+| a trigger on rain already fallen | a trigger on rain that is coming (0–2 h) | #7 | more events anticipated |
+| a radar-only history that under-estimates | a corrected history | #8 | backtests worth trusting |
+| facts written into prose | facts as data, for agents and reports | #9 | — |

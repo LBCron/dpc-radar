@@ -340,30 +340,36 @@ Full reference: **https://agentengineering.it/dpc-radar/api/products/**
 
 ## Roadmap, and where AI helps
 
-The next steps are on the
-[roadmap](https://agentengineering.it/dpc-radar/roadmap/), with an analysis
-of where AI can make the data better, and through it
-[Limen](https://github.com/agent-engineering-studio/limen):
+The plan is on the [roadmap](https://agentengineering.it/dpc-radar/roadmap/)
+and tracked in [#10](https://github.com/agent-engineering-studio/dpc-radar/issues/10).
+Each idea is measured against one goal of
+[Limen](https://github.com/agent-engineering-studio/limen): anticipate within
+72 hours 90 % of the events in the news, with at most 10 % of
+municipality-days on alert.
 
 ```mermaid
 flowchart LR
-    A["1 · Foundations<br/>grid · client · archive<br/>history · bulletins"] --> B["2 · Better data (ML)<br/>learned frame check<br/>radar–gauge bias"]
-    B --> C["3 · Nowcasting<br/>the next 0–2 hours"]
-    B --> D["4 · AI for agents<br/>MCP server · llms.txt<br/>reports that cite frames"]
-    A & B & C & D -.-> L["Limen<br/>fewer false alarms ·<br/>better backtests · earlier triggers"]
+    B["Benchmark<br/>known cases"] --> P0["Phase 0<br/>reliability map<br/>climatology<br/>storm catalogue"]
+    P0 --> P1["Phase 1<br/>learned frame check"]
+    P1 --> P2["Phase 2<br/>nowcasting<br/>radar–gauge bias"]
+    P2 --> P3["Phase 3<br/>MCP · llms.txt<br/>event reports"]
+    P0 & P1 & P2 & P3 -.-> L["Limen<br/>fewer false alarms ·<br/>more events anticipated"]
 ```
 
-| Idea | In plain words | What Limen gains |
-|---|---|---|
-| **Learned frame check** | a model that tells a real storm from radar clutter | fewer false alarms |
-| **Radar–gauge bias model** | learn how wrong the radar alone is, and correct it | 15 years of radar history usable for backtests |
-| **Nowcasting** | move the rain field forward along its motion, 0–2 hours | a trigger on rain that is *coming* |
-| **MCP server** | "how much has it rained on Messina today?" asked to any AI assistant, answered from the frames | the same facts for Limen's assistant |
-| **Reports that cite their frames** | an event summary where every number is checked against the data | readable after-action reports |
+| Idea | In plain words | What Limen gains | Issue |
+|---|---|---|---|
+| **Benchmark** | a fixed set of storms and faults where we know the answer | every change measurable | [#2](https://github.com/agent-engineering-studio/dpc-radar/issues/2) |
+| **Reliability map** | where the radar sees well, and where it is blind | a blind spot is no longer read as "dry" | [#3](https://github.com/agent-engineering-studio/dpc-radar/issues/3) |
+| **Rain climatology** | how rare is this rain *here*, from 15 years of radar | alerts on unusual rain, not on one national threshold | [#4](https://github.com/agent-engineering-studio/dpc-radar/issues/4) |
+| **Storm catalogue** | every storm as an object, and the extreme ones as events to check in the news | many more verified events to measure against | [#5](https://github.com/agent-engineering-studio/dpc-radar/issues/5) |
+| **Learned frame check** | a model that tells a real storm from a broken frame or clutter | fewer false alarms | [#6](https://github.com/agent-engineering-studio/dpc-radar/issues/6) |
+| **Nowcasting** | the rain field moved forward along its motion, 0–2 hours | a trigger on rain that is *coming* | [#7](https://github.com/agent-engineering-studio/dpc-radar/issues/7) |
+| **Radar–gauge bias** | learn how wrong the radar alone is, and correct it | a history worth backtesting on | [#8](https://github.com/agent-engineering-studio/dpc-radar/issues/8) |
+| **AI for agents** | an MCP server, `llms.txt`, reports that cite their frames | the same facts for Limen's assistant | [#9](https://github.com/agent-engineering-studio/dpc-radar/issues/9) |
 
 One rule holds for every AI feature: **the numbers come from the frames**,
-computed by tested code. A language model may explain them, never invent
-them, and nothing here replaces the official DPC alert.
+computed by tested code. A language model may read the news and explain the
+numbers, never invent them, and nothing here replaces the official DPC alert.
 
 ---
 
