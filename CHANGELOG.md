@@ -6,6 +6,28 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `archive`: `archive()` downloads the CUM3 and SRT1 frames an archive on disk
+  lacks (oldest first, frames that are gone written to `absent.txt`, idempotent;
+  reads Limen's layout and `assenti.txt`); `MergingArchive.hourly` gives the
+  rain of every hour at lon/lat points, SRT1 rescaled so that each block adds
+  up to its CUM3; `split_block`.
+- `history` (extra `history`, `numcodecs`): `SriHistory` reads the IT-DPC-SRI
+  Zarr store (2010-2025) with no zarr or xarray; `hourly` with the same
+  signature as `MergingArchive.hourly`.
+
+### Changed
+
+- `RainGrid.data` is float32, as published: half the memory, and exactly the
+  values Limen reads.
+
+### Fixed
+
+- Compared with Limen's reader of IT-DPC-SRI, the first hour of a window now
+  counts the frame issued at its start, and no hour after the window is
+  returned.
+
 ## [0.1.0] - 2026-11-04
 
 ### Added

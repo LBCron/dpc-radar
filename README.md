@@ -28,9 +28,9 @@ print(rain.sample([(15.78, 37.92)]))  # mm at Melito di Porto Salvo (184.9 on 10
 
 > **Work in progress.** dpc-radar is being extracted from
 > [Limen](https://github.com/agent-engineering-studio/limen). Today it holds
-> the products, the rain grid and the client. The archive, the 2010–2025
-> history and the criticality bulletins follow, one pull request at a time:
-> see the [roadmap](https://agentengineering.it/dpc-radar/roadmap/).
+> the products, the rain grid, the client, the archive of the «Merging» and
+> the 2010–2025 history. The criticality bulletins follow: see the
+> [roadmap](https://agentengineering.it/dpc-radar/roadmap/).
 
 ---
 
@@ -41,6 +41,7 @@ print(rain.sample([(15.78, 37.92)]))  # mm at Melito di Porto Salvo (184.9 on 10
 - [The products](#the-products)
 - [Who is it for](#who-is-it-for)
 - [Quick start](#quick-start)
+- [Keep the «Merging», read fifteen years of history](#keep-the-merging-read-fifteen-years-of-history)
 - [How it works](#how-it-works)
 - [The traps we already fell into](#the-traps-we-already-fell-into)
 - [API at a glance](#api-at-a-glance)
@@ -246,6 +247,58 @@ Every step is also a plain function, if you have your own HTTP stack:
 
 ---
 
+## Keep the «Merging», read fifteen years of history
+
+The DPC keeps about **five months** of frames. The «Merging», the rain
+corrected with the gauges, has no public archive: whatever you do not save in
+time is gone. `dpc_radar.archive` keeps your own copy and turns it into
+**hourly rain** at any point.
+
+```python
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+from dpc_radar import RadarClient
+from dpc_radar.archive import MergingArchive, archive
+
+folder = Path("radar-archive")
+now = datetime.now(UTC)
+async with RadarClient() as radar:  # run it every night: it only fetches what is missing
+    report = await archive(folder, radar, start=now - timedelta(days=150), end=now, limit=1500)
+print(report)  # ArchiveReport(downloaded=..., present=..., lost=..., failed=..., bytes=...)
+
+rain = MergingArchive(folder).hourly(
+    [(15.78, 37.92)], datetime(2026, 10, 10, 0, tzinfo=UTC), datetime(2026, 10, 10, 6, tzinfo=UTC)
+)
+# {01:00: [47.4], 02:00: [63.0], 03:00: [24.6], 04:00: [6.3], 05:00: [5.5], 06:00: [1.7]}
+```
+
+It keeps two products: `CUM3` (radar and gauges, every three hours) and
+`SRT1` (radar alone, every hour). The rain of one hour is the radar's hour
+rescaled so that the three hours add up to the «Merging»: **the gauges say how
+much, the radar says when**. Oldest frames are fetched first, since they are
+the next to disappear; frames the DPC no longer has are written down and never
+asked again.
+
+For the years before, there is **IT-DPC-SRI**: the national radar mosaic from
+2010 to 2025, every 5–15 minutes, published on
+[Zenodo](https://doi.org/10.5281/zenodo.18637608) as one 50 GB archive. Unpack
+it once, and read it with the same call:
+
+```python
+from dpc_radar.history import SriHistory  # pip install "dpc-radar[history]"
+
+history = SriHistory(Path("italian-radar-dpc-sri.zarr"))
+rain = history.hourly(
+    [(15.78, 37.92)], datetime(2015, 11, 1, tzinfo=UTC), datetime(2015, 11, 2, tzinfo=UTC)
+)
+```
+
+It is **radar only**, so it under-estimates heavy rain: where both exist,
+compare it with the «Merging».
+
+---
+
 ## How it works
 
 ### Two calls, and one surprise
@@ -304,11 +357,13 @@ flowchart LR
         PR["products.py<br/>SRI · SRT1 · CUM3–24<br/>requests · parsers · is_expired"]
         GR["grid.py<br/>RainGrid · sample · peak · crop · check"]
         ER["errors.py<br/>DpcRadarError"]
-        NX["archive · history · bulletins<br/>(coming from Limen)"]:::next
+        AR["archive.py · history.py<br/>MergingArchive · SriHistory<br/>hourly rain"]
+        NX["bulletins<br/>(coming from Limen)"]:::next
     end
     H --> CL
     CL --> PR
     CL --> GR
+    AR --> GR
     classDef next stroke-dasharray: 5 5
 ```
 
@@ -323,7 +378,7 @@ the others are here so you don't have to find them yourself.
 |---|---|---|
 | **No `CUM1`** | asking for it gives an empty list, not an error | the shortest «Merging» is `CUM3`; for one hour use `SRT1` |
 | **"Gone" looks like a crash** | a frame older than ~5 months answers **500**, with S3's `403 Forbidden` in the body, not 404 | `is_expired(status, body)`: never retry those |
-| **The «Merging» disappears** | the DPC keeps about five months, and there is no public archive of it | save the frames you need (the `archive` module is coming) |
+| **The «Merging» disappears** | the DPC keeps about five months, and there is no public archive of it | `dpc_radar.archive`: save them every night, oldest first |
 | **Two grids** | `SRI`/`SRT1` are 1 km in a Transverse Mercator projection; `CUM*` are 0.01° in EPSG:4326 | never mix the arrays: reproject one onto the other |
 | **A corrupted series** | in October 2026 every CUM24 frame at :30 carried a smooth bell of up to 20,584 mm over Abruzzo, for days (the :00 frames were right) | never trust one frame alone: compare it with its neighbours, and read a place with the median of the 3×3 pixels around it |
 | **Not every echo is rain** | sea clutter or a radar with a problem can paint rain where there is none, often as a disk around one radar, and it can stay still for hours | a jump between frames does not catch it: see the [benchmark](https://agentengineering.it/dpc-radar/benchmark/) |
@@ -351,6 +406,9 @@ them. Limen's rule today passes 8 of 18 checks; a first frame-level check
 | `grid.peak(bbox, threshold=)` / `grid.crop(bbox)` | highest value and pixels above a threshold in a box / the box as a grid |
 | `grid.check(previous, max_step=)` | `FrameCheck(verdict, grid, jumps)`: whether to trust a frame, given the one before |
 | `ABSENT` | a frame the DPC no longer keeps |
+| `archive(folder, radar, start=, end=, limit=)` | download the CUM3 and SRT1 frames the archive lacks; an `ArchiveReport` |
+| `MergingArchive(folder).hourly(points, start, end)` | hourly rain per point from the archive: SRT1 rescaled to the CUM3 |
+| `SriHistory(zarr).hourly(points, start, end)` | the same from IT-DPC-SRI, 2010–2025, radar only (extra `history`) |
 | `SRI`, `SRT1`, `CUM3`, `CUM6`, `CUM12`, `CUM24` | the products: `name`, `hours` (`None` for an intensity), `merging`, `description` |
 | `PRODUCTS`, `product(name)` | every product by name; `product("cum24")` → `CUM24` |
 | `products.last_product_url(p)` | URL and params of the "latest frame" request (a `GET`) |
@@ -424,6 +482,8 @@ dpc-radar/
 │   ├── products.py   # products, requests, parsers, is_expired: pure functions
 │   ├── grid.py       # RainGrid: read a frame, sample, peak, crop, check
 │   ├── client.py     # RadarClient: latest, at, download, ABSENT
+│   ├── archive.py    # archive the «Merging», hourly rain from it
+│   ├── history.py    # IT-DPC-SRI 2010-2025 (extra [history])
 │   └── errors.py     # DpcRadarError
 ├── tests/            # offline: synthetic GeoTIFFs and a fake API
 │   └── live/         # the same on the real API: uv run pytest -m live
