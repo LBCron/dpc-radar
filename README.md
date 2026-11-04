@@ -1,27 +1,49 @@
-# package-name
+# dpc-radar
 
-PACKAGE_DESCRIPTION
+Async Python client for the Italian Civil Protection (DPC) open radar data: SRI, Merging (CUM), history and criticality bulletins
 
-[![ci](https://github.com/agent-engineering-studio/package-name/actions/workflows/ci.yml/badge.svg)](https://github.com/agent-engineering-studio/package-name/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/package-name)](https://pypi.org/project/package-name/)
+[![ci](https://github.com/agent-engineering-studio/dpc-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/agent-engineering-studio/dpc-radar/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/dpc-radar)](https://pypi.org/project/dpc-radar/)
 
-## Using this template
 
-1. `gh repo create agent-engineering-studio/<name> --public --template agent-engineering-studio/python-package-template --clone`
-2. `./scripts/init.sh <name> "<one-line description>"` — renames the package,
-   relocks, removes this section and the script.
-3. On pypi.org, add a pending trusted publisher: owner
-   `agent-engineering-studio`, repository `<name>`, workflow `release.yml`,
-   environment `pypi`.
-4. Bump the version in `pyproject.toml`, push a `vX.Y.Z` tag: `release.yml`
-   tests, builds, publishes to PyPI and creates the GitHub release.
+> **Work in progress.** This package is being extracted from
+> [Limen](https://github.com/agent-engineering-studio/limen), where the code
+> already runs in production. For now only the pure product definitions and the
+> API request/answer helpers are here. The client, the rain grid with its 3x3
+> median, the frame check, the «Merging» archive, the IT-DPC-SRI history and
+> the criticality bulletins follow. Nothing is on PyPI yet.
 
-<!-- end template -->
+## What is already here
+
+```python
+from dpc_radar import CUM3, parse_last_product, products
+
+url, params = products.last_product_url(CUM3)  # GET, with products.HEADERS
+latest = parse_last_product(answer_json)  # time + period of the newest frame
+```
+
+| Product | Window | Source | Grid | New frame |
+|---|---|---|---|---|
+| `SRI` | intensity (mm/h) | radar only | 1 km | every 5 min |
+| `SRT1` | 1 h (mm) | radar only | 1 km | every 5 min |
+| `CUM3`, `CUM6`, `CUM12`, `CUM24` | 3–24 h (mm) | «Merging»: radar + rain gauges | 0.01°, EPSG:4326 | every 30 min |
+
+There is no `CUM1`: the API answers it with an empty list. A frame the DPC no
+longer keeps (about five months back) answers **500** with S3's `403 Forbidden`
+in the body, not 404: `is_expired(status, body)` tells it apart from a failure
+worth retrying.
+
+## Data licence
+
+The DPC radar data are open data under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/): credit the
+*Dipartimento della Protezione Civile* and share derived data under the same
+licence.
 
 ## Install
 
 ```bash
-pip install package-name
+pip install dpc-radar
 ```
 
 ## Development

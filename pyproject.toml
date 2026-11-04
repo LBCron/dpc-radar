@@ -1,7 +1,7 @@
 [project]
-name = "package-name"
+name = "dpc-radar"
 version = "0.1.0"
-description = "PACKAGE_DESCRIPTION"
+description = "Async Python client for the Italian Civil Protection (DPC) open radar data: SRI, Merging (CUM), history and criticality bulletins"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
@@ -21,9 +21,9 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/agent-engineering-studio/package-name"
-Issues = "https://github.com/agent-engineering-studio/package-name/issues"
-Changelog = "https://github.com/agent-engineering-studio/package-name/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/agent-engineering-studio/dpc-radar"
+Issues = "https://github.com/agent-engineering-studio/dpc-radar/issues"
+Changelog = "https://github.com/agent-engineering-studio/dpc-radar/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14"]
@@ -59,7 +59,7 @@ testpaths = ["tests"]
 addopts = "--strict-markers"
 
 [tool.coverage.run]
-source = ["package_name"]
+source = ["dpc_radar"]
 
 [tool.coverage.report]
 fail_under = 90

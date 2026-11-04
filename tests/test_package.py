@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import package_name
+import dpc_radar
 
 
 def test_version_is_exposed() -> None:
-    assert package_name.__version__
+    assert dpc_radar.__version__
