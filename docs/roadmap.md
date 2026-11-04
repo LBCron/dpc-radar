@@ -68,8 +68,9 @@ flowchart LR
 
 ## Phase 0 · now, without touching Limen's code
 
-Limen's radar code moves here only after 16 November 2026, so this phase works
-on notebooks, data and the benchmark.
+This phase works on notebooks, data and the benchmark. Limen's radar code
+(`grid`, `client`) can move here at any time: Limen is not in operation yet,
+so there is no date to wait for.
 
 ### Benchmark of known cases · [#2](https://github.com/agent-engineering-studio/dpc-radar/issues/2) · ✅ first version
 
