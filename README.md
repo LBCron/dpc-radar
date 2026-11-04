@@ -311,11 +311,15 @@ the others are here so you don't have to find them yourself.
 | **"Gone" looks like a crash** | a frame older than ~5 months answers **500**, with S3's `403 Forbidden` in the body, not 404 | `is_expired(status, body)`: never retry those |
 | **The «Merging» disappears** | the DPC keeps about five months, and there is no public archive of it | save the frames you need (the `archive` module is coming) |
 | **Two grids** | `SRI`/`SRT1` are 1 km in a Transverse Mercator projection; `CUM*` are 0.01° in EPSG:4326 | never mix the arrays: reproject one onto the other |
-| **One hot pixel** | Limen once read 7,348 mm from a single pixel | sample a place with the median of the 3×3 pixels around it, never one pixel |
-| **Not every echo is rain** | sea clutter or a radar with a problem can paint rain where there is none, often as a disk around one radar | check a frame against the one before it before you use it |
+| **A corrupted series** | in October 2026 every CUM24 frame at :30 carried a smooth bell of up to 20,584 mm over Abruzzo, for days (the :00 frames were right) | never trust one frame alone: compare it with its neighbours, and read a place with the median of the 3×3 pixels around it |
+| **Not every echo is rain** | sea clutter or a radar with a problem can paint rain where there is none, often as a disk around one radar, and it can stay still for hours | a jump between frames does not catch it: see the [benchmark](https://agentengineering.it/dpc-radar/benchmark/) |
 | **Radar alone is not the truth** | the radar-only history read between 10 % and 80 % of the gauges in Apulia in 2016 | use the «Merging» when you can; compare on your area |
 | **Times are in UTC, in milliseconds** | the API speaks epoch milliseconds | `to_epoch_ms` / `from_epoch_ms`, and always aware datetimes |
 | **The `origin` header** | the API once refused requests without it; in November 2026 it no longer does | `products.HEADERS` sends it anyway |
+
+Every trap above is a case in the **[benchmark](https://agentengineering.it/dpc-radar/benchmark/)**:
+real frames where we know the answer, and how each cleaning rule scores on
+them. Limen's rule today passes 8 of 18 checks.
 
 ---
 

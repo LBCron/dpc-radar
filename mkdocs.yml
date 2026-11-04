@@ -65,6 +65,7 @@ nav:
   - API reference:
       - Products and API: api/products.md
       - Errors: api/errors.md
+  - Benchmark: benchmark.md
   - Roadmap and AI: roadmap.md
   - Changelog: changelog.md
   - Contributing: contributing.md

@@ -12,6 +12,10 @@ All notable changes to this project are documented here. The format follows
   `findLastProductByType` and `downloadProduct`, the parsers of their answers,
   and `is_expired` for a frame the DPC no longer keeps.
 - `DpcRadarError`.
+- `benchmarks/`: known cases of the DPC radar data (Melito and Lipari on
+  10 October 2026, the corrupted :30 CUM24 series, calm days, two suspect
+  artefacts), a runner that scores cleaning methods on them, and Limen's
+  current rule as a baseline (#2). Checked in CI.
 
 ### Documentation
 
