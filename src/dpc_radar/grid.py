@@ -39,7 +39,7 @@ Verdict = Literal["consistent", "pixels_masked", "previous_wrong", "rejected", "
 
 @dataclass(frozen=True, slots=True)
 class RainGrid:
-    """One frame: ``data`` in mm or mm/h, ``NaN`` where there is no data."""
+    """One frame: ``data`` in mm or mm/h (float32, as published), ``NaN`` where there is no data."""
 
     product: Product
     time: datetime
@@ -52,7 +52,7 @@ class RainGrid:
         """A frame from the bytes of its GeoTIFF; ``-9999`` becomes ``NaN``."""
         try:
             with MemoryFile(raw) as mem, mem.open() as ds:
-                data = ds.read(1).astype("float64")
+                data = ds.read(1).astype("float32")
                 grid_transform, crs = ds.transform, ds.crs
         except Exception as exc:  # rasterio raises its own hierarchy
             raise DpcRadarError(f"not a readable GeoTIFF: {exc}") from exc

@@ -137,8 +137,8 @@ clean.
 | `products` | the six products, the API requests and answers, `is_expired` | ✅ done |
 | `grid` | `RainGrid`: read a frame, sample a point with the **3×3 median**, peak, crop, and `check` against the frame before (`jump-sign`) | ✅ done |
 | `client` | `RadarClient.latest(product)`, `.at(product, time)` → a grid or `ABSENT`; injectable `httpx` client, retries, `send=` hook | ✅ done |
-| `archive` | `MergingArchive`: save the «Merging» before the DPC deletes it; split a 3-hour total into hours with SRT1 | planned |
-| `history` | read the IT-DPC-SRI archive (2010–2025) with no zarr or xarray | planned, extra `[history]` |
+| `archive` | `archive()` and `MergingArchive`: save the «Merging» before the DPC deletes it; hourly rain, SRT1 rescaled to CUM3 | ✅ done |
+| `history` | `SriHistory`: the IT-DPC-SRI archive (2010–2025) with no zarr or xarray | ✅ done, extra `[history]` |
 | `bulletins` | the daily DPC criticality bulletin as data | to decide, extra `[bulletins]` |
 
 ---

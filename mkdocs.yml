@@ -65,6 +65,8 @@ nav:
   - API reference:
       - Client: api/client.md
       - Rain grid: api/grid.md
+      - Archive: api/archive.md
+      - History (IT-DPC-SRI): api/history.md
       - Products and API: api/products.md
       - Errors: api/errors.md
   - Benchmark: benchmark.md

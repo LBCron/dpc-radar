@@ -24,6 +24,10 @@ dependencies = [
     "rasterio>=1.4",
 ]
 
+[project.optional-dependencies]
+# IT-DPC-SRI, the 2010-2025 radar history: the Blosc codec of its Zarr store.
+history = ["numcodecs>=0.13"]
+
 [project.urls]
 Homepage = "https://github.com/agent-engineering-studio/dpc-radar"
 Issues = "https://github.com/agent-engineering-studio/dpc-radar/issues"
@@ -37,6 +41,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "mypy>=1.13",
+    "numcodecs>=0.13",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "pytest-cov>=6.0",
@@ -74,7 +79,7 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 
 [[tool.mypy.overrides]]
-module = ["rasterio.*", "affine.*"]
+module = ["rasterio.*", "affine.*", "numcodecs.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
