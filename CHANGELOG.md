@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-05
+
 ### Added
 
 - `bulletins.latest`, `fetch` and `latest_name` take a `send=` hook, like
