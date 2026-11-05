@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-05
+
 ### Added
 
 - `archive`: `archive()` downloads the CUM3 and SRT1 frames an archive on disk
