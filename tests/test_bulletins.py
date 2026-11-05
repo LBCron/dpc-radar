@@ -137,6 +137,31 @@ async def test_latest_bulletin() -> None:
     assert bulletin.name == "20261010_1417" and len(bulletin.zones) == 3
 
 
+async def test_a_send_hook_takes_every_request() -> None:
+    urls: list[str] = []
+
+    async with httpx.AsyncClient(transport=github()) as http:
+
+        async def send(method: str, url: str, **kwargs: Any) -> httpx.Response:
+            urls.append(url)
+            return await http.request(method, url, **kwargs)
+
+        bulletin = await b.latest(send=send)
+    assert len(bulletin.zones) == 3 and len(urls) == 5  # three trees, today, tomorrow
+
+
+@pytest.mark.parametrize(
+    "answer", [{"text": "<html>rate limited</html>"}, {"json": ["not", "an", "object"]}]
+)
+async def test_an_answer_that_is_not_a_json_object(answer: dict[str, Any]) -> None:
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, **answer))
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(DpcRadarError, match="not"):
+            await b.latest_name(client)
+        with pytest.raises(DpcRadarError, match="not"):
+            await b.fetch(NAME, client)
+
+
 async def test_errors() -> None:
     async with httpx.AsyncClient(transport=github(layout_ok=False)) as client:
         with pytest.raises(DpcRadarError, match="layout"):

@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
+import threading
+from collections import OrderedDict
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import httpx
 import numpy as np
@@ -97,6 +102,78 @@ async def test_archive_reads_limens_absent_list_and_counts_failures(tmp_path: Pa
     assert report.present == 1 and report.failed == 1 and asked == [t]
 
 
+_LINK = "https://s3.test/CUM3.tif?X-Amz-Signature=secret"
+
+
+def _hook(fail: Callable[[], httpx.Response]) -> RadarClient:
+    async def send(*_: Any, **__: Any) -> httpx.Response:
+        return fail()
+
+    return RadarClient(send=send)
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        lambda: httpx.Response(200, text="<html>maintenance</html>"),
+        lambda: httpx.Response(200, json=["not", "an", "object"]),
+    ],
+)
+async def test_a_page_that_is_not_json_is_one_failed_frame(
+    tmp_path: Path, answer: Callable[[], httpx.Response], caplog: pytest.LogCaptureFixture
+) -> None:
+    t = datetime(2026, 11, 1, 0, tzinfo=UTC)
+    report = await archive(tmp_path, _hook(answer), start=t, end=t, limit=10, now=NOW)
+    assert report.failed == 2 and report.downloaded == 0
+    assert "CUM3 202611010000 failed: DpcRadarError" in caplog.text
+
+
+@pytest.mark.parametrize("error", [TimeoutError("slow"), PermissionError("no"), OSError("net")])
+async def test_a_hook_that_raises_oserror_is_one_failed_frame(
+    tmp_path: Path, error: OSError
+) -> None:
+    def fail() -> httpx.Response:
+        raise error
+
+    t = datetime(2026, 11, 1, 0, tzinfo=UTC)
+    report = await archive(tmp_path, _hook(fail), start=t, end=t, limit=10, now=NOW)
+    assert report.failed == 2
+
+
+async def test_another_exception_from_a_hook_ends_the_run(tmp_path: Path) -> None:
+    def fail() -> httpx.Response:
+        raise ZeroDivisionError
+
+    t = datetime(2026, 11, 1, 0, tzinfo=UTC)
+    with pytest.raises(ZeroDivisionError):
+        await archive(tmp_path, _hook(fail), start=t, end=t, limit=10, now=NOW)
+
+
+async def test_the_log_says_why_and_never_holds_the_signed_link(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/downloadProduct":
+            return httpx.Response(200, json={"url": _LINK})
+        return httpx.Response(403, text="denied")
+
+    radar = RadarClient(httpx.AsyncClient(transport=httpx.MockTransport(handle)))
+    t = datetime(2026, 11, 1, 0, tzinfo=UTC)
+    report = await archive(tmp_path, radar, start=t, end=t, limit=10, now=NOW)
+    assert report.failed == 2
+    assert "HTTP 403 from s3.test" in caplog.text
+    assert "secret" not in caplog.text
+
+
+async def test_the_log_says_a_young_frame_is_not_published_yet(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    t = NOW.replace(hour=0)
+    radar, _ = fake_dpc(gone={t})
+    await archive(tmp_path, radar, start=t, end=t, limit=10, now=NOW)
+    assert "is not published yet" in caplog.text
+
+
 # --- reading the archive ---------------------------------------------------------------
 
 
@@ -122,6 +199,86 @@ def test_read_caches_and_tolerates_bad_files(tmp_path: Path) -> None:
     bad.parent.mkdir(parents=True, exist_ok=True)
     bad.write_text('{"error": "an error page saved as a frame"}')
     assert store.read("SRT1", t) is None
+
+
+def test_read_touches_the_cache_only_under_the_lock(tmp_path: Path) -> None:
+    """Without the lock: KeyError, or a segfault in popitem, under heavy thread switching."""
+
+    class Guarded(OrderedDict[Any, Any]):
+        def __contains__(self, key: object) -> bool:
+            assert store._lock.locked()
+            return super().__contains__(key)
+
+        def __setitem__(self, key: Any, value: Any) -> None:
+            assert store._lock.locked()
+            super().__setitem__(key, value)
+
+        def move_to_end(self, key: Any, last: bool = True) -> None:
+            assert store._lock.locked()
+            super().move_to_end(key, last)
+
+        def popitem(self, last: bool = True) -> tuple[Any, Any]:
+            assert store._lock.locked()
+            return super().popitem(last)
+
+    t = datetime(2026, 10, 10, 3, tzinfo=UTC)
+    later = t + timedelta(hours=3)
+    _put(tmp_path, "CUM3", t, 1.0)
+    _put(tmp_path, "CUM3", later, 2.0)
+    store = MergingArchive(tmp_path, cache_frames=1)
+    store._cache = Guarded()
+    assert store.read("CUM3", t) is store.read("CUM3", t)  # miss, then hit
+    assert store.read("CUM3", later) is not None  # evicts
+    assert len(store._cache) == 1
+
+
+def test_one_archive_shared_between_threads(tmp_path: Path) -> None:
+    moments = [datetime(2026, 10, 10, tzinfo=UTC) + timedelta(hours=3 * i) for i in range(4)]
+    for t in moments:
+        _put(tmp_path, "CUM3", t, 1.0)
+    store = MergingArchive(tmp_path, cache_frames=1)
+    errors: list[Exception] = []
+
+    def work() -> None:
+        try:
+            for i in range(40):
+                assert store.read("CUM3", moments[i % 4]) is not None
+        except Exception as exc:  # pragma: no cover - only if the lock is broken
+            errors.append(exc)
+
+    threads = [threading.Thread(target=work) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert errors == []
+
+
+@pytest.mark.parametrize("step", ["stat", "read"])
+def test_an_os_error_is_one_unreadable_frame(
+    tmp_path: Path, step: str, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    t = datetime(2026, 10, 10, 3, tzinfo=UTC)
+    _put(tmp_path, "CUM3", t, 1.0)
+
+    def denied(*_: Any, **__: Any) -> Any:
+        raise PermissionError("another uid wrote it")
+
+    monkeypatch.setattr(Path, "stat" if step == "stat" else "read_bytes", denied)
+    with caplog.at_level(logging.WARNING, logger="dpc_radar.archive"):
+        assert MergingArchive(tmp_path).read("CUM3", t) is None
+    assert "not readable: PermissionError" in caplog.text
+
+
+def test_a_frame_that_is_not_a_tiff_is_logged(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    t = datetime(2026, 10, 10, 3, tzinfo=UTC)
+    bad = path(tmp_path, "CUM3", t)
+    bad.parent.mkdir(parents=True)
+    bad.write_text("<html>error page</html>")
+    assert MergingArchive(tmp_path).read("CUM3", t) is None
+    assert "not readable: DpcRadarError" in caplog.text
 
 
 def test_hourly_splits_the_merging_like_the_radar(tmp_path: Path) -> None:

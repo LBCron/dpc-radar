@@ -22,10 +22,16 @@ Layout: ``<folder>/<PRODUCT>/<YYYY>/<MM>/<DD>/<PRODUCT>_<YYYYMMDDhhmm>.tif``,
 plus ``<folder>/<PRODUCT>/absent.txt`` with the frames the DPC no longer keeps.
 It is the layout of Limen's archive, so an existing one can be read as is
 (its ``assenti.txt`` is read too).
+
+Whatever goes wrong with one frame stays with that frame: it is counted, or read
+as not there, and the reason goes to the ``dpc_radar.archive`` logger as a
+warning. Attach a handler to see which frames and why.
 """
 
 from __future__ import annotations
 
+import logging
+import threading
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -37,6 +43,8 @@ import httpx
 from dpc_radar.client import Absent, RadarClient
 from dpc_radar.errors import DpcRadarError
 from dpc_radar.grid import RainGrid
+
+_log = logging.getLogger(__name__)
 
 #: Product → hours between two archived frames.
 STEPS: Final = {"CUM3": 3, "SRT1": 1}
@@ -64,6 +72,13 @@ def times(product: str, start: datetime, end: datetime) -> list[datetime]:
         out.append(t)
         t += timedelta(hours=step)
     return out
+
+
+def _why(exc: Exception) -> str:
+    """The reason for a log line. Never the text of a status error: it holds the signed link."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"HTTP {exc.response.status_code} from {exc.request.url.host}"
+    return f"{type(exc).__name__}: {exc}"
 
 
 def _absent(folder: Path, product: str) -> set[str]:
@@ -109,7 +124,12 @@ async def archive(
     ``absent.txt`` and not asked again. A frame younger than
     :data:`ABSENT_AFTER` that the API calls gone is not written down: it may
     just not be published yet. Stops after ``limit`` requests. A frame that
-    fails for any other reason is counted and retried on the next run.
+    fails for any other reason is counted, logged and retried on the next run.
+
+    With a ``send`` hook on the client, a failure must surface as an
+    :class:`httpx.HTTPError`, a :class:`DpcRadarError` or an :class:`OSError`
+    (``TimeoutError`` is one) to count as one failed frame. Anything else is
+    taken for a bug and ends the run.
     """
     now = now or datetime.now(UTC)
     report = ArchiveReport()
@@ -127,7 +147,8 @@ async def archive(
                 continue
             try:
                 data = await radar.download(product, t)
-            except (httpx.HTTPError, DpcRadarError):
+            except (httpx.HTTPError, DpcRadarError, OSError) as exc:
+                _log.warning("%s %s failed: %s", product, key, _why(exc))
                 report.failed += 1
                 continue
             if isinstance(data, Absent):
@@ -137,6 +158,7 @@ async def archive(
                         f.write(key + "\n")
                     report.lost += 1
                 else:
+                    _log.warning("%s %s is not published yet", product, key)
                     report.failed += 1
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -153,13 +175,15 @@ class MergingArchive:
 
     Frames are kept in memory, ``cache_frames`` at most (an SRT1 frame is
     about 6.7 MB as float32): the same frames are read for every region of a
-    run.
+    run. One instance can be shared between threads: the cache is locked, and
+    frames are decoded outside the lock.
     """
 
     def __init__(self, folder: Path, *, cache_frames: int = 80) -> None:
         self.folder = folder
         self._cache: OrderedDict[tuple[Path, int], RainGrid] = OrderedDict()
         self._cache_frames = cache_frames
+        self._lock = threading.Lock()
 
     def read(self, product: str, time: datetime) -> RainGrid | None:
         """One archived frame, or ``None`` if it is not there or not readable."""
@@ -168,16 +192,22 @@ class MergingArchive:
             key = (file, file.stat().st_mtime_ns)  # a file written again is read again
         except FileNotFoundError:
             return None
-        if key in self._cache:
-            self._cache.move_to_end(key)
-            return self._cache[key]
+        except OSError as exc:
+            _log.warning("frame %s not readable: %s", file, _why(exc))
+            return None
+        with self._lock:
+            if key in self._cache:
+                self._cache.move_to_end(key)
+                return self._cache[key]
         try:
             grid = RainGrid.from_geotiff(file.read_bytes(), product, time)
-        except DpcRadarError:  # e.g. an error page saved as a frame
+        except (OSError, DpcRadarError) as exc:  # e.g. an error page saved as a frame
+            _log.warning("frame %s not readable: %s", file, _why(exc))
             return None
-        self._cache[key] = grid
-        if len(self._cache) > self._cache_frames:
-            self._cache.popitem(last=False)
+        with self._lock:
+            self._cache[key] = grid
+            if len(self._cache) > self._cache_frames:
+                self._cache.popitem(last=False)
         return grid
 
     def _sample(

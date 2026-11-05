@@ -22,6 +22,8 @@ Needs ``shapely`` for the zone shapes: ``pip install "dpc-radar[bulletins]"``.
 from __future__ import annotations
 
 import re
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any, Final
@@ -29,6 +31,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
+from dpc_radar.client import Send, json_object
 from dpc_radar.errors import DpcRadarError
 
 REPO: Final = "pcm-dpc/DPC-Bollettini-Criticita-Idrogeologica-Idraulica"
@@ -145,59 +148,70 @@ def latest_name_from(listing: dict[str, Any]) -> str | None:
     return names[-1] if names else None
 
 
-async def _json(client: httpx.AsyncClient, url: str) -> Any:
-    response = await client.get(url)
-    response.raise_for_status()
-    return response.json()
-
-
-async def latest_name(client: httpx.AsyncClient | None = None) -> str | None:
-    """The file name of the newest bulletin (``…_today.json``), or ``None``.
-
-    Three small calls to the repository tree instead of one recursive call: the
-    archive holds thousands of files. Unauthenticated, GitHub allows 60 calls an
-    hour; pass a client with a token header for more.
-    """
+@asynccontextmanager
+async def _sender(client: httpx.AsyncClient | None, send: Send | None) -> AsyncIterator[Send]:
+    """``send`` if given, as in ``RadarClient``; else ``client``, or a new one."""
+    if send is not None:
+        yield send
+        return
     own = client is None
     http = client or httpx.AsyncClient(follow_redirects=True, timeout=30)
     try:
-        root = await _json(http, f"{API}/git/trees/master")
-        files = next(t["sha"] for t in root["tree"] if t["path"] == "files")
-        sub = await _json(http, f"{API}/git/trees/{files}")
-        geojson = next(t["sha"] for t in sub["tree"] if t["path"] == "geojson")
-        return latest_name_from(await _json(http, f"{API}/git/trees/{geojson}"))
-    except (KeyError, StopIteration) as exc:
-        raise DpcRadarError(f"unexpected layout of {REPO}: {exc!r}") from exc
+        yield http.request
     finally:
         if own:
             await http.aclose()
 
 
-async def fetch(name: str, client: httpx.AsyncClient | None = None) -> Bulletin:
+async def _json(send: Send, url: str) -> dict[str, Any]:
+    response = await send("GET", url)
+    response.raise_for_status()
+    return json_object(response)
+
+
+async def latest_name(
+    client: httpx.AsyncClient | None = None, *, send: Send | None = None
+) -> str | None:
+    """The file name of the newest bulletin (``…_today.json``), or ``None``.
+
+    Three small calls to the repository tree instead of one recursive call: the
+    archive holds thousands of files. Unauthenticated, GitHub allows 60 calls an
+    hour; pass a client with a token header for more, or a ``send`` hook to use
+    your own HTTP layer.
+    """
+    async with _sender(client, send) as http:
+        try:
+            root = await _json(http, f"{API}/git/trees/master")
+            files = next(t["sha"] for t in root["tree"] if t["path"] == "files")
+            sub = await _json(http, f"{API}/git/trees/{files}")
+            geojson = next(t["sha"] for t in sub["tree"] if t["path"] == "geojson")
+            return latest_name_from(await _json(http, f"{API}/git/trees/{geojson}"))
+        except (KeyError, StopIteration) as exc:
+            raise DpcRadarError(f"unexpected layout of {REPO}: {exc!r}") from exc
+
+
+async def fetch(
+    name: str, client: httpx.AsyncClient | None = None, *, send: Send | None = None
+) -> Bulletin:
     """Today and tomorrow of the bulletin ``name`` (``YYYYMMDD_hhmm_today.json``)."""
     when = issued(name)
     if when is None:
         raise DpcRadarError(f"not a bulletin file name: {name!r}")
     stem = name.removesuffix("_today.json")
-    own = client is None
-    http = client or httpx.AsyncClient(follow_redirects=True, timeout=30)
-    try:
+    async with _sender(client, send) as http:
         today = await _json(http, f"{RAW}/{stem}_today.json")
         tomorrow = await _json(http, f"{RAW}/{stem}_tomorrow.json")
-    finally:
-        if own:
-            await http.aclose()
     day = when.date()
     zones = zones_from_geojson(today, day) + zones_from_geojson(tomorrow, day + timedelta(days=1))
     return Bulletin(name=stem, issued=when, zones=zones)
 
 
-async def latest(client: httpx.AsyncClient | None = None) -> Bulletin:
+async def latest(client: httpx.AsyncClient | None = None, *, send: Send | None = None) -> Bulletin:
     """The newest bulletin."""
-    name = await latest_name(client)
+    name = await latest_name(client, send=send)
     if name is None:
         raise DpcRadarError(f"no bulletin found in {REPO}")
-    return await fetch(name, client)
+    return await fetch(name, client, send=send)
 
 
 __all__ = [

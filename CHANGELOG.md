@@ -6,6 +6,26 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `bulletins.latest`, `fetch` and `latest_name` take a `send=` hook, like
+  `RadarClient`.
+- The `dpc_radar.archive` logger says which frames failed or could not be read,
+  and why. The signed download link is never logged.
+
+### Fixed
+
+- `MergingArchive` can be shared between threads. Its cache was not locked:
+  under heavy thread switching, `read()` raised `KeyError` and could crash the
+  interpreter with a segmentation fault.
+- `MergingArchive.read` treats an `OSError` (no permission, a file removed while
+  reading) as one unreadable frame, instead of losing the whole `hourly()` call.
+- `RadarClient` and `bulletins` raise `DpcRadarError` when a 200 answer is not a
+  JSON object, such as a proxy page or a body cut off. `archive()` now counts
+  that as one failed frame instead of ending the run.
+- `archive()` counts an `OSError` from a download, `TimeoutError` included, as
+  one failed frame. The `send` hook contract is documented.
+
 ## [0.2.0] - 2026-11-05
 
 ### Added
