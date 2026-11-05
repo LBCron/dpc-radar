@@ -1,5 +1,6 @@
 """dpc-radar: the Italian Civil Protection (DPC) open radar data, from Python."""
 
+import logging
 from importlib.metadata import version
 
 from dpc_radar.client import ABSENT, Absent, RadarClient
@@ -23,6 +24,7 @@ from dpc_radar.products import (
 )
 
 __version__ = version("dpc-radar")
+logging.getLogger("dpc_radar").addHandler(logging.NullHandler())
 
 __all__ = [
     "ABSENT",

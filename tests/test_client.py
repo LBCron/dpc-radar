@@ -106,6 +106,16 @@ async def test_other_errors_raise() -> None:
             await radar.at("CUM24", T0)
 
 
+@pytest.mark.parametrize("answer", [{"text": "<html>"}, {"json": [1, 2]}])
+async def test_an_answer_that_is_not_a_json_object(answer: dict[str, Any]) -> None:
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, **answer))
+    async with client(transport) as radar:
+        with pytest.raises(DpcRadarError, match="JSON"):
+            await radar.download("CUM24", T0)
+        with pytest.raises(DpcRadarError, match="JSON"):
+            await radar.last_product("CUM24")
+
+
 async def test_retries_5xx_then_succeeds() -> None:
     transport, calls = api(fail_first=2)
     waits: list[float] = []

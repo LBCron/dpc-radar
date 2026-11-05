@@ -10,7 +10,13 @@ To route every request through your own HTTP layer (a shared retry policy, a
 rate limiter, a cache), pass ``send``: an ``async (method, url, **kwargs) ->
 httpx.Response``. The client then uses it for every call and does no retrying
 of its own. The hook must *return* error responses rather than raise on them,
-or the client cannot tell a frame that is gone from a failure.
+or the client cannot tell a frame that is gone from a failure. For its own
+failures it should raise :class:`httpx.HTTPError`: that is what
+:func:`dpc_radar.archive.archive` counts as one failed frame, along with
+:class:`~dpc_radar.errors.DpcRadarError` and :class:`OSError`.
+
+An answer that is not a JSON object (a proxy or maintenance page, a body cut
+off) raises :class:`~dpc_radar.errors.DpcRadarError`.
 
 The client keeps no state between calls: no cache, no logging. Holding on to
 the last frame, and deciding what a failure means, is the caller's job.
@@ -44,6 +50,17 @@ from dpc_radar.products import (
 
 Send = Callable[..., Awaitable[httpx.Response]]
 _RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
+
+
+def json_object(response: httpx.Response) -> dict[str, Any]:
+    """The JSON object in an answer; :class:`DpcRadarError` if it holds anything else."""
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise DpcRadarError(f"the answer is not JSON (HTTP {response.status_code})") from exc
+    if not isinstance(payload, dict):
+        raise DpcRadarError(f"the answer is not a JSON object (HTTP {response.status_code})")
+    return payload
 
 
 @final
@@ -114,7 +131,7 @@ class RadarClient:
         url, params = last_product_url(name, base=self._base)
         response = await self._send("GET", url, params=params, headers=HEADERS)
         response.raise_for_status()
-        return parse_last_product(response.json())
+        return parse_last_product(json_object(response))
 
     async def latest(self, name: str | Product, *, cached: RainGrid | None = None) -> RainGrid:
         """The newest frame of a product.
@@ -152,7 +169,7 @@ class RadarClient:
             if is_expired(response.status_code, response.text):
                 return ABSENT
             response.raise_for_status()
-        link = parse_download(response.json())
+        link = parse_download(json_object(response))
         tiff = await self._send("GET", link, timeout=self._timeout_s)
         tiff.raise_for_status()
         return tiff.content
