@@ -28,8 +28,8 @@ print(rain.sample([(15.78, 37.92)]))  # mm at Melito di Porto Salvo (184.9 on 10
 
 > **Work in progress.** dpc-radar is being extracted from
 > [Limen](https://github.com/agent-engineering-studio/limen). Today it holds
-> the products, the rain grid, the client, the archive of the «Merging» and
-> the 2010–2025 history. The criticality bulletins follow: see the
+> the products, the rain grid, the client, the archive of the «Merging», the
+> 2010–2025 history and the criticality bulletins. Next: the ideas on the
 > [roadmap](https://agentengineering.it/dpc-radar/roadmap/).
 
 ---
@@ -42,6 +42,7 @@ print(rain.sample([(15.78, 37.92)]))  # mm at Melito di Porto Salvo (184.9 on 10
 - [Who is it for](#who-is-it-for)
 - [Quick start](#quick-start)
 - [Keep the «Merging», read fifteen years of history](#keep-the-merging-read-fifteen-years-of-history)
+- [The official alert, as data](#the-official-alert-as-data)
 - [How it works](#how-it-works)
 - [The traps we already fell into](#the-traps-we-already-fell-into)
 - [API at a glance](#api-at-a-glance)
@@ -299,6 +300,33 @@ compare it with the «Merging».
 
 ---
 
+## The official alert, as data
+
+Every day by 16:00 the DPC publishes the **criticality bulletin**: the
+official alert level of each of Italy's ~190 alert zones, for today and
+tomorrow, for landslides, rivers and thunderstorms. It is already structured
+data (GeoJSON, CC BY 4.0); `dpc_radar.bulletins` reads it.
+
+```python
+from dpc_radar import bulletins  # pip install "dpc-radar[bulletins]"
+
+bulletin = await bulletins.latest()
+for zone in bulletin.alerts():  # yellow or above, today, highest first
+    print(zone.colour, zone.name, zone.hydrogeological, zone.hydraulic, zone.thunderstorms)
+# orange Bacini Flumendosa - Flumineddu 2 0 1
+# orange Gallura 2 0 1
+# yellow Basi-B 1 0 0 ...
+
+zone = bulletin.zone_at(15.78, 37.92)  # the zone of a point, with its municipalities
+print(zone.name, zone.colour)  # Versante Jonico Meridionale yellow
+```
+
+Levels are numbers: 0 none, 1 yellow, 2 orange, 3 red. This is **the**
+official alert: whatever you compute from the radar is not, and belongs next
+to it, never in its place.
+
+---
+
 ## How it works
 
 ### Two calls, and one surprise
@@ -358,7 +386,7 @@ flowchart LR
         GR["grid.py<br/>RainGrid · sample · peak · crop · check"]
         ER["errors.py<br/>DpcRadarError"]
         AR["archive.py · history.py<br/>MergingArchive · SriHistory<br/>hourly rain"]
-        NX["bulletins<br/>(coming from Limen)"]:::next
+        BU["bulletins.py<br/>the official alert by zone"]
     end
     H --> CL
     CL --> PR
@@ -409,6 +437,7 @@ them. Limen's rule today passes 8 of 18 checks; a first frame-level check
 | `archive(folder, radar, start=, end=, limit=)` | download the CUM3 and SRT1 frames the archive lacks; an `ArchiveReport` |
 | `MergingArchive(folder).hourly(points, start, end)` | hourly rain per point from the archive: SRT1 rescaled to the CUM3 |
 | `SriHistory(zarr).hourly(points, start, end)` | the same from IT-DPC-SRI, 2010–2025, radar only (extra `history`) |
+| `bulletins.latest()` / `bulletins.fetch(name)` | the official criticality bulletin: `Bulletin.zones`, `.alerts()`, `.zone_at(lon, lat)` (extra `bulletins`) |
 | `SRI`, `SRT1`, `CUM3`, `CUM6`, `CUM12`, `CUM24` | the products: `name`, `hours` (`None` for an intensity), `merging`, `description` |
 | `PRODUCTS`, `product(name)` | every product by name; `product("cum24")` → `CUM24` |
 | `products.last_product_url(p)` | URL and params of the "latest frame" request (a `GET`) |
@@ -484,6 +513,7 @@ dpc-radar/
 │   ├── client.py     # RadarClient: latest, at, download, ABSENT
 │   ├── archive.py    # archive the «Merging», hourly rain from it
 │   ├── history.py    # IT-DPC-SRI 2010-2025 (extra [history])
+│   ├── bulletins.py  # the official criticality bulletin (extra [bulletins])
 │   └── errors.py     # DpcRadarError
 ├── tests/            # offline: synthetic GeoTIFFs and a fake API
 │   └── live/         # the same on the real API: uv run pytest -m live
